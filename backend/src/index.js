@@ -11,9 +11,11 @@ app.use(express.json());
 app.use(cors());
 app.use("/", userRoutes);
 
-const port = process.env.PORT || 8080;
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-});
+if (process.env.NODE_ENV !== "production") {
+  const port = process.env.PORT;
+  app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+  });
+}
 
 exports.api = functions.https.onRequest(app);

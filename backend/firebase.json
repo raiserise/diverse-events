@@ -1,7 +1,7 @@
 {
   "functions": [
     {
-      "source": "src",
+      "source": ".",
       "codebase": "default",
       "ignore": [
         "node_modules",

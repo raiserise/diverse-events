@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "diverseevents-af6ea"
+    "default": "diverseevents-af6ea",
+    "dev": "diverseevents-af6ea"
   }
 }
