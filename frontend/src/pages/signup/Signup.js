@@ -10,26 +10,30 @@ import { db } from "../../firebase";
 import { doc, setDoc } from "firebase/firestore";
 
 const Signup = () => {
+  // Initialize Firebase authentication and navigation
   const auth = getAuth();
 
+  // State variables for managing authentication state, email, password, confirm password, and error messages
   const [authing, setAuthing] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [role, setRole] = useState("user"); // Default role
   const [error, setError] = useState("");
 
   const signUpWithGoogle = async () => {
     setAuthing(true);
-    try {
-      const response = await signInWithPopup(auth, new GoogleAuthProvider());
 
+    try {
+      // Sign up with Google
+      const response = await signInWithPopup(auth, new GoogleAuthProvider());
+      console.log(response.user.uid);
+
+      // Add user details to Firestore
       await setDoc(doc(db, "users", response.user.uid), {
         uid: response.user.uid,
         email: response.user.email,
         name: response.user.displayName || "",
-        role, // Store the selected role
         createdAt: new Date().toISOString(),
       });
 
@@ -41,6 +45,7 @@ const Signup = () => {
   };
 
   const signUpWithEmail = async () => {
+    // Check if passwords match
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -50,13 +55,19 @@ const Signup = () => {
     setError("");
 
     try {
-      const response = await createUserWithEmailAndPassword(auth, email, password);
+      // Sign up with email and password
+      const response = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      console.log(response.user.uid);
 
+      // Add user details to Firestore
       await setDoc(doc(db, "users", response.user.uid), {
         uid: response.user.uid,
         email: response.user.email,
         name: displayName,
-        role, // Store the selected role
         createdAt: new Date().toISOString(),
       });
 
@@ -105,29 +116,6 @@ const Signup = () => {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
-
-          {/* Role Selection Radio Buttons */}
-          <div className="w-full flex flex-col mb-4 text-white">
-            <label className="mb-2">Register as:</label>
-            <label>
-              <input
-                type="radio"
-                value="user"
-                checked={role === "user"}
-                onChange={(e) => setRole(e.target.value)}
-              />{" "}
-              User
-            </label>
-            <label>
-              <input
-                type="radio"
-                value="vendor"
-                checked={role === "vendor"}
-                onChange={(e) => setRole(e.target.value)}
-              />{" "}
-              Vendor
-            </label>
-          </div>
         </div>
 
         {error && <div className="text-red-500 mb-4">{error}</div>}
@@ -152,7 +140,7 @@ const Signup = () => {
           disabled={authing}
           className="w-full bg-[#ff6f61] text-white font-semibold rounded-md p-3 text-center flex items-center justify-center cursor-pointer mt-4"
         >
-          Sign Up with Google <GoogleIcon />
+          Sign Up with Google <GoogleIcon></GoogleIcon>
         </button>
 
         <div className="w-full flex items-center justify-center mt-6">
