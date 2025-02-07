@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate for redirection
 import {
   getAuth,
   GoogleAuthProvider,
@@ -11,6 +12,7 @@ import { doc, setDoc } from "firebase/firestore";
 
 const Signup = () => {
   const auth = getAuth();
+  const navigate = useNavigate(); // Initialize useNavigate
 
   const [authing, setAuthing] = useState(false);
   const [email, setEmail] = useState("");
@@ -19,6 +21,7 @@ const Signup = () => {
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState("user"); // Default role
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState(""); // State for success message
 
   const signUpWithGoogle = async () => {
     setAuthing(true);
@@ -34,6 +37,8 @@ const Signup = () => {
       });
 
       console.log("User added to Firestore!");
+      setSuccessMessage("Successfully Created New Account"); // Set success message
+      setTimeout(() => navigate("/login"), 2000); // Redirect to login page after 2 seconds
     } catch (error) {
       console.log(error);
       setAuthing(false);
@@ -61,6 +66,8 @@ const Signup = () => {
       });
 
       console.log("User added to Firestore!");
+      setSuccessMessage("Successfully Created New Account"); // Set success message
+      setTimeout(() => navigate("/login"), 2000); // Redirect to login page after 2 seconds
     } catch (error) {
       console.log(error);
       setError(error.message);
@@ -75,6 +82,13 @@ const Signup = () => {
           <h3 className="text-3xl font-bold mb-2">Create Account</h3>
           <p className="text-md mb-4">Join DiverseEvents</p>
         </div>
+
+        {/* Success Message */}
+        {successMessage && (
+          <div className="w-full bg-green-500 text-white p-3 rounded-md mb-4 text-center">
+            {successMessage}
+          </div>
+        )}
 
         <div className="w-full flex flex-col mb-4">
           <input
