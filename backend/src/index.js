@@ -11,8 +11,8 @@ app.use(express.json());
 app.use(cors());
 app.use("/", userRoutes);
 
-if (process.env.NODE_ENV !== "production") {
-  const port = process.env.PORT;
+if (process.env.NODE_ENV !== "prod") {
+  const port = process.env.SERVER_PORT || 8080;
   app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
   });

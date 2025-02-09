@@ -1,0 +1,196 @@
+name: Backend CI/CD Pipeline
+#test
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # build:
+  #   runs-on: ubuntu-latest
+
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
+
+  #     - name: Set up Node.js
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: "20"
+  #         cache: "npm"
+  #         cache-dependency-path: "./backend/package-lock.json"
+
+  #     - name: Install Dependencies
+  #       run: npm ci
+  #       working-directory: ./backend
+
+  #     - name: Lint Code
+  #       run: npx eslint .
+  #       working-directory: ./backend
+
+  #     - name: Run CodeQL Analysis (SAST)
+  #       uses: github/codeql-action/init@v3
+  #       with:
+  #         languages: javascript
+
+  #     - name: Perform CodeQL Analysis (SAST)
+  #       uses: github/codeql-action/analyze@v3
+  #       with:
+  #         output: ./backend/results
+
+  #     - name: Upload SARIF Results
+  #       uses: github/codeql-action/upload-sarif@v3
+  #       with:
+  #         sarif_file: ./backend/results/javascript.sarif
+  #         category: backend-codeql
+
+  # test:
+  #   runs-on: ubuntu-latest
+  #   needs: build
+
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
+
+  #     - name: Set up Node.js
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: "20"
+
+  #     - name: Install Dependencies
+  #       run: npm ci
+  #       working-directory: ./backend
+
+  #     - name: Run Tests
+  #       run: npm test
+  #       working-directory: ./backend
+  #       env:
+  #         CRED_FIREBASE_TYPE: ${{ secrets.CRED_FIREBASE_TYPE }}
+  #         CRED_FIREBASE_PROJECT_ID: ${{ secrets.CRED_FIREBASE_PROJECT_ID }}
+  #         CRED_FIREBASE_PRIVATE_KEY_ID: ${{ secrets.CRED_FIREBASE_PRIVATE_KEY_ID }}
+  #         CRED_FIREBASE_PRIVATE_KEY: ${{ secrets.CRED_FIREBASE_PRIVATE_KEY }}
+  #         CRED_FIREBASE_CLIENT_EMAIL: ${{ secrets.CRED_FIREBASE_CLIENT_EMAIL }}
+  #         CRED_FIREBASE_CLIENT_ID: ${{ secrets.CRED_FIREBASE_CLIENT_ID }}
+  #         CRED_FIREBASE_AUTH_URI: ${{ secrets.CRED_FIREBASE_AUTH_URI }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    # needs: test
+    if: github.ref == 'refs/heads/cd'
+    # env:
+    #   GOOGLE_APPLICATION_CREDENTIALS: google-application-credentials.json
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: ./backend
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      # - name: Deploy to Firebase
+      #   uses: jsryudev/deploy-firebase-functions@v20.0.1
+      #   env:
+      #     FIREBASE_TOKEN: ${{ secrets.CRED_FIREBASE_CI_TOKEN }}
+      #     FIREBASE_PROJECT: ${{ secrets.CRED_FIREBASE_PROJECT_ID }}
+      #     FIREBASE_PRIVATE_KEY_ID: ${{ secrets.CRED_FIREBASE_PRIVATE_KEY_ID }}
+      #     FIREBASE_PRIVATE_KEY: ${{ secrets.CRED_FIREBASE_PRIVATE_KEY }}
+      #     FIREBASE_CLIENT_EMAIL: ${{ secrets.CRED_FIREBASE_CLIENT_EMAIL }}
+      #     FIREBASE_CLIENT_ID: ${{ secrets.CRED_FIREBASE_CLIENT_ID }}
+      #     FIREBASE_AUTH_URI: ${{ secrets.CRED_FIREBASE_AUTH_URI }}
+      #     FUNCTIONS_DIR: ./backend
+
+      - name: Create Firebase SA Key
+        run: echo '${{ secrets.CRED_FIREBASE_SERVICE_ACCOUNT }}' | jq . > ${{ github.workspace }}/firebase-key.json
+
+      - name: Validate Firebase Authentication
+        run: firebase experiments:list --project=${{ secrets.CRED_FIREBASE_PROJECT_ID }}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/firebase-key.json
+
+      - name: Debug Firebase Authentication
+        run: firebase projects:list --debug
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/firebase-key.json
+
+      # - name: Set Firebase Functions Environment Variables
+      #   run: |
+      #     firebase functions:config:set firebase.type="${{ secrets.CRED_FIREBASE_TYPE }}"
+      #     firebase functions:config:set firebase.project_id="${{ secrets.CRED_FIREBASE_PROJECT_ID }}"
+      #     firebase functions:config:set firebase.private_key="${{ secrets.CRED_FIREBASE_PRIVATE_KEY }}"
+      #     firebase functions:config:set firebase.client_email="${{ secrets.CRED_FIREBASE_CLIENT_EMAIL }}"
+      #     --project ${{ secrets.CRED_FIREBASE_PROJECT_ID }}
+      #   env:
+      #     GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/firebase-key.json
+
+      - name: Verify Firebase Key File
+        run: |
+          ls -la $GITHUB_WORKSPACE
+          cat $GITHUB_WORKSPACE/firebase-key.json | jq
+
+      - name: Deploy to Firebase Functions
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: $GITHUB_WORKSPACE/firebase-key.json
+        run: |
+          export GOOGLE_APPLICATION_CREDENTIALS="$GITHUB_WORKSPACE/firebase-key.json"
+          gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+          gcloud auth list  # Check if authentication worked
+          firebase projects:list --debug  # Ensure Firebase CLI recognizes the auth
+          firebase deploy --only functions --project=diverseevents-af6ea --debug
+        working-directory: ./backend
+
+      # - name: Authenticate Firebase
+      #   run: |
+      #     echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > /firebase-key.json
+      #     cat /firebase-key.json  # Debug: Ensure JSON is correctly formatted
+      #   shell: bash
+      #   env:
+      #     GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.CRED_FIREBASE_SERVICE_ACCOUNT }}
+
+      # - name: Set Firebase Credentials
+      #   run: |
+      #     export GOOGLE_APPLICATION_CREDENTIALS=$HOME/firebase-key.json
+      #     firebase projects:list
+      #   env:
+      #     GOOGLE_APPLICATION_CREDENTIALS: $HOME/firebase-key.json
+
+      # - name: Debug Firebase Authentication
+      #   run: firebase login:list
+
+      # - name: Set Firebase Project
+      #   run: firebase use --add ${{ secrets.CRED_FIREBASE_PROJECT_ID }}
+
+      # - name: Deploy to Firebase Functions
+      #   env:
+      #     GOOGLE_APPLICATION_CREDENTIALS: firebase-key.json
+      #   run: |
+      #     firebase deploy --only functions:api
+      #   working-directory: ./backend
+
+      # - name: Prepare Google Application Credentials
+      #   shell: bash
+      #   run: |
+      #     echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}" | base64 --decode > "google-application-credentials.json"
+
+      # - name: Deploy Firebase Functions
+      #   shell: bash
+      #   run: firebase deploy --only functions:api
+      #   working-directory: ./backend
+
+      # - name: Remove credentials file
+      #   if: success() || failure()
+      #   run: |
+      #     rm google-application-credentials.json

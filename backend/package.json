@@ -16,12 +16,15 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "ajv": "^8.17.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "firebase-functions": "^6.3.1",
     "lint": "^0.8.19",
-    "punycode": "^2.3.1"
+    "psl": "^1.15.0",
+    "tough-cookie": "^5.1.0",
+    "uri-js": "^4.4.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
@@ -33,6 +36,6 @@
     "supertest": "^7.0.0"
   },
   "engines": {
-    "node": "22"
+    "node": "20"
   }
 }

@@ -1,37 +1,26 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom"; // Import MemoryRouter
 import Signup from "../../../pages/signup/Signup";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  createUserWithEmailAndPassword,
-} from "firebase/auth";
-import { getFirestore, setDoc } from "firebase/firestore";
+import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 
-// Mock Firebase
-const mockAuth = { currentUser: null };
-
+// Mock Firebase functions
 jest.mock("firebase/auth", () => ({
-  getAuth: jest.fn(() => mockAuth),
-  GoogleAuthProvider: jest.fn(() => ({ providerId: "google.com" })),
-  signInWithPopup: jest.fn(),
+  getAuth: jest.fn(),
   createUserWithEmailAndPassword: jest.fn(),
-}));
-
-jest.mock("firebase/firestore", () => ({
-  getFirestore: jest.fn(() => ({})), // Mocked Firestore object
-  setDoc: jest.fn(),
-  doc: jest.fn(),
+  signInWithPopup: jest.fn(),
 }));
 
 describe("Signup Component", () => {
   beforeEach(() => {
     jest.clearAllMocks(); // Clear mocks before each test
+
+    // Mock resolved values
     createUserWithEmailAndPassword.mockResolvedValue({
       user: { uid: "12345", email: "test@example.com" },
     });
+
     signInWithPopup.mockResolvedValue({
       user: {
         uid: "12345",
@@ -42,7 +31,11 @@ describe("Signup Component", () => {
   });
 
   test("renders the signup form", () => {
-    render(<Signup />);
+    render(
+      <MemoryRouter>
+        <Signup />
+      </MemoryRouter>
+    );
 
     expect(
       screen.getByPlaceholderText("Enter your display name")
@@ -58,7 +51,11 @@ describe("Signup Component", () => {
   });
 
   test("shows error when passwords do not match", async () => {
-    render(<Signup />);
+    render(
+      <MemoryRouter>
+        <Signup />
+      </MemoryRouter>
+    );
 
     await userEvent.type(
       screen.getByPlaceholderText("Enter your password"),
@@ -75,7 +72,11 @@ describe("Signup Component", () => {
   });
 
   test("signs up with email and password", async () => {
-    render(<Signup />);
+    render(
+      <MemoryRouter>
+        <Signup />
+      </MemoryRouter>
+    );
 
     await userEvent.type(
       screen.getByPlaceholderText("Enter your display name"),
