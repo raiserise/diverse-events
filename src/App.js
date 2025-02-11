@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import Layout from "./pages/layout/Layout"; // Layout that includes Menu and Navbar
 import EventsPage from "./pages/events/Events";
+import MyEvents from "./pages/events/MyEvents";
+import BrowseEvents from "./pages/events/BrowseEvents";
 import DashboardPage from "./pages/dashboard/Dashboard";
 import Login from "./pages/login/Login";
 import UsersPage from "./pages/users/Users";
@@ -30,6 +32,26 @@ const App = () => {
             <ProtectedRoute>
               <Layout title={"Events"}>
                 <EventsPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/events/browse-events"
+          element={
+            <ProtectedRoute>
+              <Layout title={"Browse Events"}>
+                <BrowseEvents />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/events/my-events"
+          element={
+            <ProtectedRoute>
+              <Layout title={"My Events"}>
+                <MyEvents />
               </Layout>
             </ProtectedRoute>
           }
