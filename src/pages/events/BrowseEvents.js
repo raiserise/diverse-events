@@ -1,5 +1,4 @@
-    import React, { useEffect, useState } from "react";
-import { set } from "react-hook-form";
+import React, { useEffect, useState } from "react";
 
 const BrowseEvents = () => {
   const [searchQuery, setSearchQuery] = useState("");
