@@ -160,6 +160,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.14.0
         with:
           target: ${{ vars.PUBLIC_API_URL }}
+          token: ${{ secrets.ZAP_GITHUB_TOKEN }}
           # rules_file_name: ".zap/rules.tsv"
           # cmd_options: "-a"
 
