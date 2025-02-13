@@ -64,7 +64,12 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           command: test
-          args: --all-projects --json-file-output=snyk-report.json
+          args: |
+            --all-projects \
+            --org=raiserise \
+            --json-file-output=snyk-report.json \
+            --strict-out-of-sync=false \
+            --detection-depth=6
 
         # Upload Reports
       - name: Upload SAST Reports
