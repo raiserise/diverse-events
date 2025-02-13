@@ -125,20 +125,15 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Create Firebase Key File
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIVERSEEVENTS_AF6EA }}' > ./functions/config/firebase-key.json
+
       - name: Run Web Firebase tests
         run: npm test
 
       - name: Run Function Tests
         run: npm test
         working-directory: ./functions
-        env:
-          CRED_FIREBASE_TYPE: ${{ secrets.CRED_FIREBASE_TYPE }}
-          CRED_FIREBASE_PROJECT_ID: ${{ secrets.CRED_FIREBASE_PROJECT_ID }}
-          CRED_FIREBASE_PRIVATE_KEY_ID: ${{ secrets.CRED_FIREBASE_PRIVATE_KEY_ID }}
-          CRED_FIREBASE_PRIVATE_KEY: ${{ secrets.CRED_FIREBASE_PRIVATE_KEY }}
-          CRED_FIREBASE_CLIENT_EMAIL: ${{ secrets.CRED_FIREBASE_CLIENT_EMAIL }}
-          CRED_FIREBASE_CLIENT_ID: ${{ secrets.CRED_FIREBASE_CLIENT_ID }}
-          CRED_FIREBASE_AUTH_URI: ${{ secrets.CRED_FIREBASE_AUTH_URI }}
 
   deployment:
     runs-on: ubuntu-latest
