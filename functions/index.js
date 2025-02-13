@@ -1,4 +1,4 @@
-const { onRequest } = require("firebase-functions/v2/https");
+const {onRequest} = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const express = require("express");
 // const dotenv = require("dotenv");
@@ -31,6 +31,6 @@ exports.api = onRequest(app);
 
 // Example Firebase Function (Standalone)
 exports.helloWorld = onRequest((request, response) => {
-  logger.info("Hello logs!", { structuredData: true });
+  logger.info("Hello logs!", {structuredData: true});
   response.send("Hello from Firebase!");
 });
