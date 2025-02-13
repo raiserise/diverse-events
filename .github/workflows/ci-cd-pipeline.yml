@@ -13,6 +13,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache Node Modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            **/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       # Inject Firebase environment variables
       - name: Inject Firebase Config into environment
         run: |
@@ -25,8 +35,11 @@ jobs:
           echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.REACT_APP_FIREBASE_MEASUREMENT_ID }}" >> $GITHUB_ENV
           echo "REACT_APP_API_URL=${{ secrets.REACT_APP_API_URL }}" >> $GITHUB_ENV
 
+      - name: Install Dependencies
+        run: npm ci
+
       - name: Lint Code
-        run: npx eslint .
+        run: npx eslint . -f json -o eslint-report.json
 
       - name: Upload ESLint Report
         uses: actions/upload-artifact@v4
@@ -38,11 +51,20 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v4
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=diverse-events
+            -Dsonar.sources=.
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
 
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: --all-projects --json-file-output=snyk-report.json
 
         # Upload Reports
       - name: Upload SAST Reports
@@ -53,8 +75,13 @@ jobs:
             sonar-report.html
             snyk-report.html
 
-      - name: Install Dependencies and build
-        run: npm ci && npm run build
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            build/
+            functions/
 
       # semgrep.sarif
 
@@ -84,13 +111,10 @@ jobs:
     needs: sast-and-build
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
-          node-version: "20"
+          name: build-output
 
       - name: Install dependencies and run Firebase tests
         run: npm test
@@ -112,6 +136,10 @@ jobs:
     needs: test
 
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-output
+
       - name: Deploy to Firebase hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -135,3 +163,10 @@ jobs:
           path: |
             zap-report.html
             nuclei-report.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            *.html
+            *.json
