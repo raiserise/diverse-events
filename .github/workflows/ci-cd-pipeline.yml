@@ -166,7 +166,6 @@ jobs:
           target: ${{ vars.PUBLIC_API_URL }}
           # rules_file_name: ".zap/rules.tsv"
           cmd_options: "-a"
-          use_docker: false
 
       - name: Upload DAST Reports
         uses: actions/upload-artifact@v4
