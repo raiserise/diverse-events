@@ -57,6 +57,7 @@ jobs:
             -Dsonar.sources=.
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.analysis.report=sonar-report.html
 
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/node@master
@@ -78,7 +79,7 @@ jobs:
           name: sast-reports
           path: |
             sonar-report.html
-            snyk-report.html
+            snyk-report.json
 
       - run: npm run build
       - uses: actions/upload-artifact@v4
@@ -121,7 +122,10 @@ jobs:
         with:
           name: build-output
 
-      - name: Install dependencies and run Firebase tests
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Web Firebase tests
         run: npm test
 
       - name: Run Function Tests
