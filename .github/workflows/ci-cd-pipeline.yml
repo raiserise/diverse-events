@@ -65,7 +65,7 @@ jobs:
         with:
           command: test
           args: |
-            --all-projects \
+            test --all-projects --severity-threshold=high \
             --org=raiserise \
             --json-file-output=snyk-report.json \
             --strict-out-of-sync=false \
