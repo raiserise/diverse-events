@@ -152,13 +152,13 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Deploy to Firebase hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIVERSEEVENTS_AF6EA }}
-          channelId: live
-          projectId: diverseevents-af6ea
+      # - name: Deploy to Firebase hosting
+      #   uses: FirebaseExtended/action-hosting-deploy@v0
+      #   with:
+      #     repoToken: ${{ secrets.GITHUB_TOKEN }}
+      #     firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIVERSEEVENTS_AF6EA }}
+      #     channelId: live
+      #     projectId: diverseevents-af6ea
 
       - name: Start OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.7.0
@@ -166,6 +166,7 @@ jobs:
           target: ${{ vars.PUBLIC_API_URL }}
           # rules_file_name: ".zap/rules.tsv"
           cmd_options: "-a"
+          use_docker: false
 
       - name: Upload DAST Reports
         uses: actions/upload-artifact@v4
