@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { getEvents } from "../../api/apiService";
 import { collection, getDocs } from "firebase/firestore";
 
 const MyEvents = () => {
-    const [events, setEvents] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
 
     const dummyData = [
         { id: 1, name: "Tech Conference 2025", date: "2025-02-11 10:00 AM", category: "Technology", location: "San Francisco, CA" },
@@ -17,7 +20,22 @@ const MyEvents = () => {
         { id: 9, name: "Sports Meet", date: "2025-10-05 08:00 AM", category: "Sports", location: "Tokyo, Japan" },
         { id: 10, name: "Environmental Summit", date: "2025-11-20 03:00 PM", category: "Environment", location: "Berlin, Germany" },
       ];
+  const fetchEvents = async () => {
+    try {
+      const data = await getEvents();
+      console.log(data);
+      setEvents(data);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    } finally {
+      setLoading(false);
+  }
+  };
 
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+/*
     useEffect(() => {
         const fetchEvents = async () => {
             setLoading(true);
@@ -33,7 +51,7 @@ const MyEvents = () => {
             }
         };
         setTimeout(fetchEvents, 1000);
-    }, []);
+    }, []);*/
 
     return (
         <div className="container mx-auto p-4">
@@ -63,7 +81,7 @@ const MyEvents = () => {
               <tr key={event.id}>
                 <td className="py-2 px-4 border-b">{index + 1}</td>
                 <td className="py-2 px-4 border-b">{event.name}</td>
-                <td className="py-2 px-4 border-b">{event.date}</td>
+                <td className="py-2 px-4 border-b">{event.description}</td>
                 <td className="py-2 px-4 border-b">{event.category}</td>
                 <td className="py-2 px-4 border-b">{event.location}</td>
                 <td className="py-2 px-4 border-b">

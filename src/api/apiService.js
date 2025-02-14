@@ -2,6 +2,7 @@ import axios from "axios";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
+//#region Users
 // Add a new user
 export const addUser = async (userData) => {
   try {
@@ -51,3 +52,57 @@ export const deleteUser = async (id) => {
     throw new Error(error.response ? error.response.data : error.message);
   }
 };
+//#endregion
+
+//#region Events
+// Add a new event
+export const addEvent = async (eventData) => {
+  try {
+    const response = await axios.post(`${API_URL}/events`, eventData);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response ? error.response.data : error.message);
+  }
+};
+
+// Get all events
+export const getEvents = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/events`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response ? error.response.data : error.message);
+  }
+};
+
+// Get a single event by ID
+export const getEventById = async (id) => {
+  try {
+    const response = await axios.get(`${API_URL}/events/${id}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response ? error.response.data : error.message);
+  }
+};
+
+// Update a event
+export const updateEvent = async (id, eventData) => {
+  try {
+    const response = await axios.put(`${API_URL}/events/${id}`, eventData);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response ? error.response.data : error.message);
+  }
+};
+
+// Delete a event
+export const deleteEvent = async (id) => {
+  try {
+    const response = await axios.delete(`${API_URL}/events/${id}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response ? error.response.data : error.message);
+  }
+};
+//#endregion
+
