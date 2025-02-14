@@ -1,0 +1,147 @@
+name: CI/CD Pipeline for deployment
+
+on:
+  push:
+    branches:
+      - cd
+
+jobs:
+  sast-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache Node Modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            **/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # Inject Firebase environment variables
+      - name: Inject Firebase Config into environment
+        run: |
+          echo "REACT_APP_FIREBASE_API_KEY=${{ secrets.REACT_APP_FIREBASE_API_KEY }}" >> $GITHUB_ENV
+          echo "REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}" >> $GITHUB_ENV
+          echo "REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}" >> $GITHUB_ENV
+          echo "REACT_APP_FIREBASE_STORAGE_BUCKET=${{ secrets.REACT_APP_FIREBASE_STORAGE_BUCKET }}" >> $GITHUB_ENV
+          echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.REACT_APP_FIREBASE_MESSAGING_SENDER_ID }}" >> $GITHUB_ENV
+          echo "REACT_APP_FIREBASE_APP_ID=${{ secrets.REACT_APP_FIREBASE_APP_ID }}" >> $GITHUB_ENV
+          echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.REACT_APP_FIREBASE_MEASUREMENT_ID }}" >> $GITHUB_ENV
+          echo "REACT_APP_API_URL=${{ secrets.REACT_APP_API_URL }}" >> $GITHUB_ENV
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Lint Code
+        run: npx eslint . -f json -o eslint-report.json
+
+      - name: Upload ESLint Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-report
+          path: eslint-report.json
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=diverse-events
+            -Dsonar.sources=.
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.analysis.report=sonar-report.html
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: |
+            --all-projects --severity-threshold=high \
+            --org=raiserise \
+            --json-file-output=snyk-report.json \
+            --strict-out-of-sync=false \
+            --detection-depth=6
+
+        # Upload Reports
+      - name: Upload SAST Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-reports
+          path: |
+            sonar-report.html
+            snyk-report.json
+
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            build/
+            functions/
+
+  test:
+    runs-on: ubuntu-latest
+    needs: sast-and-build
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-output
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Create Firebase Key File
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIVERSEEVENTS_AF6EA }}' > ./functions/config/firebase-key.json
+
+      - name: Run Web Firebase tests
+        run: npm test
+
+      - name: Run Function Tests
+        run: npm test
+        working-directory: ./functions
+
+  deployment:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-output
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Deploy to Firebase hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIVERSEEVENTS_AF6EA }}
+          channelId: live
+          projectId: diverseevents-af6ea
+
+      - name: Start OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ vars.PUBLIC_API_URL }}
+          token: ${{ secrets.ZAP_GITHUB_TOKEN }}
+
+      - name: Upload DAST Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-reports
+          path: |
+            zap-report.html

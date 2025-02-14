@@ -1,9 +1,8 @@
 import React, { useState } from "react";
-import Swal from "sweetalert2";
-
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { getUsers } from "../../api/apiService";
+import { toast } from "react-toastify";
 
 const EditUser = ({ selectedUser, setUsers, setIsEditing }) => {
   const id = selectedUser.id;
@@ -15,12 +14,11 @@ const EditUser = ({ selectedUser, setUsers, setIsEditing }) => {
     e.preventDefault();
 
     if (!email || !name) {
-      return Swal.fire({
-        icon: "error",
-        title: "Error!",
-        text: "All fields are required.",
-        showConfirmButton: true,
+      toast.error("All fields are required.", {
+        position: "top-center", // Can override position set in CustomToast if needed
+        autoClose: 3000,
       });
+      return;
     }
 
     const user = {
@@ -33,18 +31,16 @@ const EditUser = ({ selectedUser, setUsers, setIsEditing }) => {
       ...user,
     });
 
+    toast.success("Successfully updated!", {
+      position: "top-center", // Can override position set in CustomToast if needed
+      autoClose: 3000,
+    });
+
     const updatedUsers = await getUsers();
     setUsers(updatedUsers);
     setIsEditing(false);
-    getUsers();
 
-    Swal.fire({
-      icon: "success",
-      title: "Updated!",
-      text: `${user.name}'s data has been updated.`,
-      showConfirmButton: false,
-      timer: 1500,
-    });
+    getUsers();
   };
 
   return (
