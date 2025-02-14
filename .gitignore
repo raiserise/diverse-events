@@ -5,6 +5,10 @@
 /.pnp
 .pnp.js
 
+/functions/config/firebase-key.json
+
+/functions/firebase-debug.log
+
 # Environment variable files
 .env
 # testing

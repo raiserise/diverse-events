@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import {
   getAuth,
@@ -102,7 +103,7 @@ const Login = () => {
 
         <div className="w-full flex items-center justify-center mt-10">
           <p className="text-sm font-normal text-gray-400">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <span className="font-semibold text-white cursor-pointer underline">
               <a href="/signup">Sign Up</a>
             </span>

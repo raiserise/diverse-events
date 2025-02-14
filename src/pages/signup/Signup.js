@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom"; // Import useNavigate for redirection
 import {
@@ -9,6 +10,7 @@ import {
 import { Google as GoogleIcon } from "@mui/icons-material";
 import { db } from "../../firebase";
 import { doc, setDoc } from "firebase/firestore";
+import compare from "secure-compare";
 
 const Signup = () => {
   const auth = getAuth();
@@ -46,7 +48,7 @@ const Signup = () => {
   };
 
   const signUpWithEmail = async () => {
-    if (password !== confirmPassword) {
+    if (!compare(password, confirmPassword)) {
       setError("Passwords do not match");
       return;
     }
@@ -55,7 +57,11 @@ const Signup = () => {
     setError("");
 
     try {
-      const response = await createUserWithEmailAndPassword(auth, email, password);
+      const response = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
 
       await setDoc(doc(db, "users", response.user.uid), {
         uid: response.user.uid,
