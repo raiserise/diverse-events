@@ -1,4 +1,4 @@
-const {onRequest} = require("firebase-functions/v2/https");
+const { onRequest } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const express = require("express");
 // const dotenv = require("dotenv");
@@ -16,7 +16,9 @@ app.use(cors());
 
 // Import and use your existing routes
 const userRoutes = require("./routes/userRoutes");
+const eventRoutes = require("./routes/eventRoutes");
 app.use("/", userRoutes);
+app.use("/", eventRoutes);
 
 // // Local development: Run Express normally if not in Firebase Functions
 // if (process.env.NODE_ENV !== "prod") {
@@ -31,6 +33,6 @@ exports.api = onRequest(app);
 
 // Example Firebase Function (Standalone)
 exports.helloWorld = onRequest((request, response) => {
-  logger.info("Hello logs!", {structuredData: true});
+  logger.info("Hello logs!", { structuredData: true });
   response.send("Hello from Firebase!");
 });

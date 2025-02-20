@@ -2,40 +2,36 @@ import axios from "axios";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-// Add a new user
-export const addUser = async (userData) => {
+export const addData = async (endPoint, data) => {
   try {
-    const response = await axios.post(`${API_URL}/users`, userData);
+    const response = await axios.post(`${API_URL}${endPoint}`, data);
     return response.data;
   } catch (error) {
     throw new Error(error.response ? error.response.data : error.message);
   }
 };
 
-// Get all users
-export const getUsers = async () => {
+export const getAllData = async (endPoint) => {
   try {
-    const response = await axios.get(`${API_URL}/users`);
+    const response = await axios.get(`${API_URL}${endPoint}`);
+    return response.data;
+  } catch (err) {
+    throw err.response?.data || err.message;
+  }
+};
+
+export const getDataById = async (endPoint, id) => {
+  try {
+    const response = await axios.get(`${API_URL}${endPoint}${id}`);
     return response.data;
   } catch (error) {
     throw new Error(error.response ? error.response.data : error.message);
   }
 };
 
-// Get a single user by ID
-export const getUserById = async (id) => {
+export const postData = async (endPoint, id, userData) => {
   try {
-    const response = await axios.get(`${API_URL}/users/${id}`);
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response ? error.response.data : error.message);
-  }
-};
-
-// Update a user
-export const updateUser = async (id, userData) => {
-  try {
-    const response = await axios.put(`${API_URL}/users/${id}`, userData);
+    const response = await axios.put(`${API_URL}${endPoint}${id}`, userData);
     return response.data;
   } catch (error) {
     throw new Error(error.response ? error.response.data : error.message);
@@ -43,9 +39,9 @@ export const updateUser = async (id, userData) => {
 };
 
 // Delete a user
-export const deleteUser = async (id) => {
+export const deleteData = async (endPoint, id) => {
   try {
-    const response = await axios.delete(`${API_URL}/users/${id}`);
+    const response = await axios.delete(`${API_URL}${endPoint}${id}`);
     return response.data;
   } catch (error) {
     throw new Error(error.response ? error.response.data : error.message);
