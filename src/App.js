@@ -5,7 +5,7 @@ import Layout from "./pages/layout/Layout"; // Layout that includes Menu and Nav
 import EventsPage from "./pages/events/Events";
 import DashboardPage from "./pages/dashboard/Dashboard";
 import Login from "./pages/login/Login";
-import UsersPage from "./pages/users/Users";
+// import UsersPage from "./pages/users/Users";
 import Signup from "./pages/signup/Signup";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProfilePage from "./pages/profile/Profile";
@@ -33,16 +33,6 @@ const App = () => {
               <ProtectedRoute>
                 <Layout title={"Events"}>
                   <EventsPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/users"
-            element={
-              <ProtectedRoute>
-                <Layout title={"User Management"}>
-                  <UsersPage />
                 </Layout>
               </ProtectedRoute>
             }
