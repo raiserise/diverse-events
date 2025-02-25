@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import {
   Home as HomeIcon,
   Event as EventIcon,
-  Person as UserIcon,
   AccountCircle as ProfileIcon,
 } from "@mui/icons-material";
 
@@ -20,11 +19,6 @@ const menuItems = [
         icon: <EventIcon />,
         label: "Events",
         href: "/events",
-      },
-      {
-        icon: <UserIcon />,
-        label: "Users",
-        href: "/users",
       },
     ],
   },
