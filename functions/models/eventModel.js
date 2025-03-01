@@ -37,6 +37,7 @@ const createEvent = async (data) => {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       organizers: organizers,
       status: "active",
+      participants: [], // Track all RSVPs (invited + public)
     };
 
     const docRef = await db.collection("events").add(eventData);
@@ -62,10 +63,10 @@ const getEventsByUser = async (userId) => {
 const getEventById = async (id) => {
   try {
     const doc = await db.collection("events").doc(id).get();
-    if (!doc.exists) throw new Error("User not found");
+    if (!doc.exists) throw new Error("Event not found");
     return { id: doc.id, ...doc.data() };
   } catch (error) {
-    throw new Error(`Error retrieving user: ${error.message}`);
+    throw new Error(`Error retrieving events: ${error.message}`);
   }
 };
 

@@ -17,8 +17,14 @@ app.use(cors());
 // Import and use your existing routes
 const userRoutes = require("./routes/userRoutes");
 const eventRoutes = require("./routes/eventRoutes");
+const inviteRoutes = require("./routes/inviteRoutes");
+const rsvpRoutes = require("./routes/rsvpRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 app.use("/", userRoutes);
 app.use("/", eventRoutes);
+app.use("/", inviteRoutes);
+app.use("/", rsvpRoutes);
+app.use("/", notificationRoutes);
 
 // // Local development: Run Express normally if not in Firebase Functions
 // if (process.env.NODE_ENV !== "prod") {

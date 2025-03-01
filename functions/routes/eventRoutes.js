@@ -17,5 +17,16 @@ router.delete(
   eventController.deleteEvent
 );
 router.get("/events/search", eventController.searchEvents);
+router.get(
+  "/events/:eventId",
+  authMiddleware.auth,
+  eventController.getEventDetails
+);
+
+router.get(
+  "/events/:eventId/stats",
+  authMiddleware.auth,
+  eventController.getEventStats
+);
 
 module.exports = router;

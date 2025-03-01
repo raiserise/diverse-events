@@ -18,12 +18,12 @@ describe("Signup Component", () => {
 
     // Mock resolved values
     createUserWithEmailAndPassword.mockResolvedValue({
-      user: { uid: "12345", email: "test@example.com" },
+      user: { user_id: "12345", email: "test@example.com" },
     });
 
     signInWithPopup.mockResolvedValue({
       user: {
-        uid: "12345",
+        user_id: "12345",
         email: "test@example.com",
         displayName: "Test User",
       },
