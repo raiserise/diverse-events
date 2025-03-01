@@ -3,6 +3,15 @@ import React from "react";
 const Table = ({ columns = [], data = [], handleEdit, handleDelete }) => {
   const renderCell = (item, column) => {
     const value = item[column.accessor];
+    if (Array.isArray(value)) {
+      return (
+        <ul>
+          {value.map((service, index) => (
+            <li key={index}>{service}</li>
+          ))}
+        </ul>
+      );
+    }
     return column.format ? column.format(value) : value;
   };
 
