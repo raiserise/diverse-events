@@ -1,16 +1,20 @@
-// App.js
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
-import Layout from "./pages/layout/Layout"; // Layout that includes Menu and Navbar
+import Layout from "./pages/layout/Layout";
+import Landing from "./pages/landing/Landing.js";
+import Dashboard from "./pages/dashboard/Dashboard.js";
 import EventsPage from "./pages/events/Events";
-import EventDetails from "./pages/events/EventDetails"; // New event details page
-import DashboardPage from "./pages/dashboard/Dashboard";
+import EventDetails from "./pages/events/EventDetails";
+import Invites from "./pages/invite/Invites";
+import RSVP from "./pages/rsvp/RSVP";
+import Notifications from "./pages/notification/Notifications";
+import Profile from "./pages/profile/Profile";
+
 import Login from "./pages/login/Login";
-import UsersPage from "./pages/users/Users";
 import Signup from "./pages/signup/Signup";
 import ProtectedRoute from "./components/ProtectedRoute";
-import ProfilePage from "./pages/profile/Profile";
+import Users from "./pages/users/Users";
 import "react-toastify/dist/ReactToastify.css";
 import CustomToast from "./components/CustomToast";
 
@@ -19,12 +23,13 @@ const App = () => {
     <div className="App">
       <Router>
         <Routes>
+          <Route path="/" element={<Landing/>} />
           <Route
-            path="/"
+            path="/dashboard"
             element={
               <ProtectedRoute>
                 <Layout title={"Dashboard"}>
-                  <DashboardPage />
+                  <Dashboard />
                 </Layout>
               </ProtectedRoute>
             }
@@ -49,22 +54,40 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          <Route path="/invites" element={
+            <ProtectedRoute>
+              <Layout title={"Invites"}>
+                <Invites />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/rsvp" element={
+            <ProtectedRoute>
+              <Layout title={"RSVP"}>
+                <RSVP />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Layout title={"Profile"}>
+                <Profile />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/notifications" element={
+            <ProtectedRoute>
+              <Layout title={"Notifications"}>
+                <Notifications />
+              </Layout>
+            </ProtectedRoute>
+          } />
           <Route
             path="/users"
             element={
               <ProtectedRoute>
                 <Layout title={"User Management"}>
-                  <UsersPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Layout title={"Events"}>
-                  <ProfilePage />
+                  <Users />
                 </Layout>
               </ProtectedRoute>
             }
