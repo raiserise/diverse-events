@@ -1,40 +1,51 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Home as HomeIcon,
   Event as EventIcon,
   AccountCircle as ProfileIcon,
+  Notifications as NotificationsIcon,
+  EventAvailable as RSVPIcon,
+  Dashboard as DashboardIcon,
 } from "@mui/icons-material";
 
 const menuItems = [
   {
-    title: "MENU",
     items: [
       {
-        icon: <HomeIcon />,
-        label: "Home",
-        href: "/",
+        label: "Dashboard",
+        href: "/dashboard",
+        icon: <DashboardIcon />,
       },
       {
-        icon: <EventIcon />,
         label: "Events",
         href: "/events",
+        icon: <EventIcon />,
       },
-    ],
-  },
-  {
-    title: "OTHER",
-    items: [
       {
+        label: "Invites",
+        href: "/invites",
         icon: <ProfileIcon />,
+      },
+      {
+        label: "RSVP",
+        href: "/rsvp",
+        icon: <RSVPIcon />,
+      },
+      {
+        label: "Notifications",
+        href: "/notifications",
+        icon: <NotificationsIcon />,
+      },
+      {
         label: "Profile",
         href: "/profile",
-      },
+        icon: <ProfileIcon />,
+      }
     ],
   },
 ];
 
-const Menu = () => {
+const SideBar = () => {
   const location = useLocation();
 
   return (
@@ -65,4 +76,4 @@ const Menu = () => {
   );
 };
 
-export default Menu;
+export default SideBar;
