@@ -2,29 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import GetEventLogic from "../../Logic/EventsLogic/GetEventLogic";
-import { getStorage, ref, getDownloadURL } from "firebase/storage";
-
-// Helper component that converts a gs:// URL to a downloadable HTTPS URL and renders the image.
-function FirebaseImage({ path, alt, className }) {
-  const [url, setUrl] = useState(null);
-  const [errorMsg, setErrorMsg] = useState(null);
-
-  useEffect(() => {
-    if (!path) return;
-    const storage = getStorage();
-    const imageRef = ref(storage, path);
-    getDownloadURL(imageRef)
-      .then((downloadUrl) => setUrl(downloadUrl))
-      .catch((error) => {
-        console.error("Error fetching image:", error);
-        setErrorMsg("Error loading image");
-      });
-  }, [path]);
-
-  if (errorMsg) return <p>{errorMsg}</p>;
-  if (!url) return <p>Loading image...</p>;
-  return <img src={url} alt={alt} className={className} />;
-}
+import FirebaseImage from "../../components/FirebaseImage";
 
 function Events() {
   const {
@@ -140,7 +118,10 @@ function Events() {
                       />
                     </Link>
                   )}
-                  <Link to={`/events/${event.id}`} className="text-blue-600 hover:underline">
+                  <Link
+                    to={`/events/${event.id}`}
+                    className="text-blue-600 hover:underline"
+                  >
                     <span className="font-bold">{event.title}</span>
                   </Link>
                 </div>

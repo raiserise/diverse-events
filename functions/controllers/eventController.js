@@ -28,6 +28,15 @@ const getUserEvents = async (req, res) => {
   }
 };
 
+const getAllEvents = async (req, res) => {
+  try {
+    const events = await eventModel.getAllEvents();
+    res.status(200).json(events);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const searchEvents = async (req, res) => {
   try {
     const filters = {
@@ -147,4 +156,5 @@ module.exports = {
   deleteEvent,
   getEventDetails,
   getEventStats,
+  getAllEvents,
 };

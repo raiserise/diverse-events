@@ -14,7 +14,11 @@ const getFirebaseToken = async () => {
 };
 
 // Function to send authenticated requests
-const authHeaders = async () => {
+const authHeaders = async (requiresAuth = true) => {
+  if (!requiresAuth) {
+    return {}; // Return empty headers for unauthenticated requests
+  }
+
   try {
     const token = await getFirebaseToken();
     return {
@@ -28,9 +32,9 @@ const authHeaders = async () => {
 };
 
 //eg addData(/events, data)
-export const addData = async (endPoint, data) => {
+export const addData = async (endPoint, data, requiresAuth = true) => {
   try {
-    const headers = await authHeaders();
+    const headers = await authHeaders(requiresAuth);
     const response = await axios.post(`${API_URL}${endPoint}`, data, headers);
     return response.data;
   } catch (error) {
@@ -38,9 +42,9 @@ export const addData = async (endPoint, data) => {
   }
 };
 
-export const getAllData = async (endPoint) => {
+export const getAllData = async (endPoint, requiresAuth = true) => {
   try {
-    const headers = await authHeaders();
+    const headers = await authHeaders(requiresAuth);
     const response = await axios.get(`${API_URL}${endPoint}`, headers);
     return response.data;
   } catch (error) {
@@ -48,21 +52,21 @@ export const getAllData = async (endPoint) => {
   }
 };
 
-export const getDataById = async (endPoint, id) => {
+export const getDataById = async (endPoint, id, requiresAuth = true) => {
   try {
-    const headers = await authHeaders();
-    const response = await axios.get(`${API_URL}${endPoint}${id}`, headers);
+    const headers = await authHeaders(requiresAuth);
+    const response = await axios.get(`${API_URL}${endPoint}/${id}`, headers);
     return response.data;
   } catch (error) {
     throw new Error(error.response ? error.response.data : error.message);
   }
 };
 
-export const postData = async (endPoint, id, userData) => {
+export const postData = async (endPoint, id, userData, requiresAuth = true) => {
   try {
-    const headers = await authHeaders();
+    const headers = await authHeaders(requiresAuth);
     const response = await axios.put(
-      `${API_URL}${endPoint}${id}`,
+      `${API_URL}${endPoint}/${id}`,
       userData,
       headers
     );
@@ -72,21 +76,26 @@ export const postData = async (endPoint, id, userData) => {
   }
 };
 
-export const deleteData = async (endPoint, id) => {
+export const deleteData = async (endPoint, id, requiresAuth = true) => {
   try {
-    const headers = await authHeaders();
-    const response = await axios.delete(`${API_URL}${endPoint}${id}`, headers);
+    const headers = await authHeaders(requiresAuth);
+    const response = await axios.delete(`${API_URL}${endPoint}/${id}`, headers);
     return response.data;
   } catch (error) {
     throw new Error(error.response ? error.response.data : error.message);
   }
 };
 
-export const patchData = async (endPoint, id, userData) => {
+export const patchData = async (
+  endPoint,
+  id,
+  userData,
+  requiresAuth = true
+) => {
   try {
-    const headers = await authHeaders();
+    const headers = await authHeaders(requiresAuth);
     const response = await axios.patch(
-      `${API_URL}${endPoint}${id}`,
+      `${API_URL}${endPoint}/${id}`,
       userData,
       headers
     );

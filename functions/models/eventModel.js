@@ -60,6 +60,17 @@ const getEventsByUser = async (userId) => {
   }
 };
 
+const getAllEvents = async () => {
+  try {
+    const snapshot = await db.collection("events").get();
+
+    // Map the results to include the document ID and data
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    throw new Error(`Error getting all events: ${error.message}`);
+  }
+};
+
 const getEventById = async (id) => {
   try {
     const doc = await db.collection("events").doc(id).get();
@@ -159,4 +170,5 @@ module.exports = {
   updateEvent,
   getEventById,
   deleteEvent,
+  getAllEvents,
 };
