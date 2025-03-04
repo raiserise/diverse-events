@@ -1,10 +1,17 @@
 const eventModel = require("../models/eventModel");
+const inviteModel = require("../models/inviteModel");
+const rsvpModel = require("../models/rsvpModel");
 
 const createEvent = async (req, res) => {
   try {
     const data = req.body;
     data.creatorId = req.user.user_id; // Assuming authenticated user
     const event = await eventModel.createEvent(data);
+
+    // Create invites if specified
+    if (data.invites && data.invites.length > 0) {
+      await inviteModel.createInvite(event.id, data.invites);
+    }
 
     res.status(201).json(event);
   } catch (error) {
@@ -83,10 +90,61 @@ const deleteEvent = async (req, res) => {
   }
 };
 
+const getEventDetails = async (req, res) => {
+  try {
+    const eventId = req.params.eventId;
+    const event = await eventModel.getEventById(eventId);
+
+    // Optionally, check if the user has access to the event
+    if (
+      event.privacy === "private" &&
+      !event.organizers.includes(req.user.user_id)
+    ) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to view this event" });
+    }
+
+    res.status(200).json(event);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getEventStats = async (req, res) => {
+  try {
+    const eventId = req.params.eventId;
+
+    // Verify the user is authorized to view stats
+    const event = await eventModel.getEventById(eventId);
+    if (!event.organizers.includes(req.user.user_id)) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    // Fetch invites and RSVPs using their respective models
+    const invites = await inviteModel.getInvitesByEvent(eventId);
+    const rsvps = await rsvpModel.getRSVPsByEvent(eventId);
+
+    // Calculate stats
+    const stats = {
+      totalInvites: invites.length,
+      totalRSVPs: rsvps.length,
+      attendees: rsvpModel.countRSVPsByStatus(rsvps, "approved"),
+      declined: rsvpModel.countRSVPsByStatus(rsvps, "declined"),
+    };
+
+    res.status(200).json(stats);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   createEvent,
   getUserEvents,
   searchEvents,
   updateEvent,
   deleteEvent,
+  getEventDetails,
+  getEventStats,
 };
