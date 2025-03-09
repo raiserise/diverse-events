@@ -123,6 +123,28 @@ const getRSVPsByEvent = async (eventId) => {
   }
 };
 
+const findRSVP = async (eventId, userId) => {
+  try {
+    // Use composite query with multiple where clauses <button class="citation-flag" data-index="3">
+    const snapshot = await db
+      .collection("rsvps")
+      .where("eventId", "==", eventId)
+      .where("userId", "==", userId)
+      .limit(1) // Optimize performance <button class="citation-flag" data-index="4">
+      .get();
+
+    // Return first matching document or null
+    return snapshot.empty
+      ? null
+      : {
+          id: snapshot.docs[0].id,
+          ...snapshot.docs[0].data(),
+        };
+  } catch (error) {
+    throw new Error(`RSVP lookup failed: ${error.message}`);
+  }
+};
+
 const countRSVPsByStatus = (rsvps, status) => {
   return rsvps.filter((rsvp) => rsvp.status === status).length;
 };
@@ -134,4 +156,5 @@ module.exports = {
   getRSVPById,
   getRSVPsByEvent,
   countRSVPsByStatus,
+  findRSVP,
 };
