@@ -1,3 +1,4 @@
+// src/App.js
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
@@ -23,7 +24,7 @@ const App = () => {
     <div className="App">
       <Router>
         <Routes>
-          <Route path="/" element={<Landing/>} />
+          <Route path="/" element={<Landing />} />
           <Route
             path="/dashboard"
             element={
@@ -54,34 +55,46 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-          <Route path="/invites" element={
-            <ProtectedRoute>
-              <Layout title={"Invites"}>
-                <Invites />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/rsvp" element={
-            <ProtectedRoute>
-              <Layout title={"RSVP"}>
-                <RSVP />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Layout title={"Profile"}>
-                <Profile />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/notifications" element={
-            <ProtectedRoute>
-              <Layout title={"Notifications"}>
-                <Notifications />
-              </Layout>
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/invites"
+            element={
+              <ProtectedRoute>
+                <Layout title={"Invites"}>
+                  <Invites />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rsvp"
+            element={
+              <ProtectedRoute>
+                <Layout title={"RSVP"}>
+                  <RSVP />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Layout title={"Profile"}>
+                  <Profile />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <Layout title={"Notifications"}>
+                  <Notifications />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/users"
             element={
@@ -94,7 +107,6 @@ const App = () => {
           />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          {/* Add more routes if needed */}
         </Routes>
       </Router>
       <CustomToast />
