@@ -34,13 +34,13 @@ const Navbar = ({ pageTitle }) => {
       },
       {
         title: user ? "Signout" : "Login",
-        link: user ? "/" : "/auth/login",
+        link: user ? "/" : "/login",
         show: true,
         onclick: user ? handleSignOut : null,
       },
       {
         title: "Signup",
-        link: "/auth/signup",
+        link: "/signup",
         show: user ? false : true,
       },
     ]);
