@@ -1,11 +1,13 @@
-import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { getAuth, signOut, onAuthStateChanged } from "firebase/auth";
 import {
   Event as EventIcon,
   AccountCircle as ProfileIcon,
   Notifications as NotificationsIcon,
   EventAvailable as RSVPIcon,
   Dashboard as DashboardIcon,
+  ExitToApp as SignOutIcon,
 } from "@mui/icons-material";
 
 const menuItems = [
@@ -40,6 +42,12 @@ const menuItems = [
         label: "Profile",
         href: "/profile",
         icon: <ProfileIcon />,
+      },
+      {
+        label: "Sign Out",
+        href: "#",
+        icon: <SignOutIcon />,
+        onClick: "handleSignOut",
       }
     ],
   },
@@ -47,15 +55,56 @@ const menuItems = [
 
 const SideBar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const auth = getAuth();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    });
+  }, [auth]);
+
+  const handleSignOut = () => {
+    signOut(auth)
+      .then(() => {
+        // Clear local storage
+        localStorage.removeItem("user");
+        // Navigate to login
+        navigate("/");
+        console.log("Sign out successful");
+      })
+      .catch((error) => {
+        console.error("Sign out error: ", error);
+      });
+  };
 
   return (
     <div className="mt-4 text-sm">
+      {user && (
+        <div className="text-center mb-4">
+          <h2 className="text-lg font-bold">Welcome back, {user.displayName}!</h2>
+        </div>
+      )}
       {menuItems.map((menu) => (
         <div className="flex flex-col gap-2" key={menu.title}>
           <span className="hidden lg:block my-4">{menu.title}</span>
           {menu.items.map((item) => {
             const isActive = location.pathname === item.href;
-            return (
+            return item.label === "Sign Out" ? (
+              <button
+                key={item.label}
+                onClick={handleSignOut}
+                className={`flex items-center justify-center lg:justify-start gap-4 py-2 md:px-2 rounded-md ${
+                  isActive
+                    ? "bg-[#C0C0C0] text-black"
+                    : "text-black-500 hover:bg-[#C0C0C0]"
+                }`}
+              >
+                <span className="text-lg">{item.icon}</span>
+                <span className="hidden lg:block">{item.label}</span>
+              </button>
+            ) : (
               <Link
                 to={item.href}
                 key={item.label}

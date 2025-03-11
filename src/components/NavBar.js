@@ -1,47 +1,50 @@
+// src/components/NavBar.js
 import React, { useEffect, useState } from "react";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-// import { Avatar, Menu, MenuItem } from "@mui/material";
-// import { useNavigate } from "react-router-dom";
-// import { useAuth } from "../context/AuthProvider";
-// import { db } from "../firebase";
-// import { doc, getDoc } from "firebase/firestore";
 
 const Navbar = ({ pageTitle }) => {
   const [navBarData, setNavBarData] = useState([]);
-  const [token, setToken] = useState('');
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const auth = getAuth();
     onAuthStateChanged(auth, (user) => {
-      if (user) {
-        user.getIdToken().then((idToken) => {
-          setToken(idToken);
-        });
-      } else {
-        setToken('');
-      }
+      setUser(user);
     });
   }, []);
 
+  // const handleSignOut = () => {
+  //   const auth = getAuth();
+  //   signOut(auth)
+  //     .then(() => {
+  //       setUser(null);
+  //       // Consider setting toast to show that user has signed out
+  //     })
+  //     .catch((error) => {
+  //       console.error("Error signing out: ", error);
+  //     });
+  // };
+
   useEffect(() => {
     setNavBarData([
-      {
-        title: "Dashboard",
-        link: "/dashboard",
-        show: token ? true : false
-      },
-      {
-        title: token ? "Signout" : "Login",
-        link: token ? "/signout" : "/auth/login",
-        show: true
-      },
-      {
-        title: "Signup",
-        link: "/auth/signup",
-        show: token ? false : true
-      }
+      // {
+      //   title: "Dashboard",
+      //   link: "/dashboard",
+      //   show: user ? true : false,
+      // },
+      // {
+      //   title: user ? "Signout" : "Login",
+      //   link: user ? "/" : "/login",
+      //   show: true,
+      //   onclick: user ? handleSignOut : null,
+      // },
+      // {
+      //   title: "Signup",
+      //   link: "/signup",
+      //   show: user ? false : true,
+      // },
     ]);
-  }, [token]);
+  }, [user]);
 
   return (
     <nav className="bg-gray-800 text-white p-4">

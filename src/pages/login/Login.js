@@ -41,7 +41,7 @@ const Login = () => {
       const response = await signInWithEmailAndPassword(auth, email, password);
       console.log(response.user.uid);
       login(response.user); // Dispatch the login action
-      navigate("/");
+      navigate("/dashboard");
     } catch (error) {
       console.log(error);
       setError(error.message);
