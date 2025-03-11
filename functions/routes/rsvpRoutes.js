@@ -21,4 +21,10 @@ router.get(
   rsvpController.getRSVPsByStatus
 );
 
+router.get(
+  "/rsvp/check/:eventId",
+  authMiddleware.auth,
+  rsvpController.checkRSVP
+);
+
 module.exports = router;

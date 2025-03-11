@@ -6,38 +6,41 @@ const createEvent = async (data) => {
     // Ensure organizers array includes creatorId by default
     const organizers =
       Array.isArray(data.organizers) && data.organizers.length > 0
-        ? [data.creatorId, ...data.organizers] // Include creatorId if organizers are provided
+        ? [...new Set([data.creatorId, ...data.organizers])] // Ensure uniqueness
         : [data.creatorId]; // Default to creatorId only if no organizers are provided
 
     const eventData = {
-      title: data.title || "Event", // Default to empty string
-      description: data.description || "Event Description",
+      title: data.title?.trim() || "Untitled Event",
+      description: data.description?.trim() || "No description provided.",
       privacy: data.privacy || "public",
-      medium: data.medium || "online",
+      format: data.format || "online", // Renamed from eventType for clarity
       startDate: data.startDate ? new Date(data.startDate) : null,
       endDate: data.endDate ? new Date(data.endDate) : null,
-      duration: data.duration || "1",
+      duration: isNaN(data.duration) ? "1" : String(data.duration), // Ensure string format
       language: data.language || "English",
-      maxParticipants: data.maxParticipants || 10,
-      category: data.category || "General",
-      terms: data.terms || "Terms and conditions",
+      maxParticipants: isNaN(data.maxParticipants)
+        ? 10
+        : Number(data.maxParticipants),
+      category: Array.isArray(data.category) ? data.category : ["General"], // Ensure array format
+      terms: data.terms?.trim() || "Standard event terms apply.",
       location:
         data.latitude && data.longitude
           ? {
-              name: data.locationName || "Unknown",
+              name: data.locationName?.trim() || "Unknown Location",
               coordinates: new admin.firestore.GeoPoint(
                 parseFloat(data.latitude),
                 parseFloat(data.longitude)
               ),
             }
           : null, // Set location to null if latitude/longitude are missing
-      acceptsRSVP: data.acceptsRSVP ?? false, // Use nullish coalescing to allow false values
+      acceptsRSVP: data.acceptsRSVP ?? false, // Allow explicit false values
       featuredImage: data.featuredImage || "",
-      creatorId: data.creatorId || null, // Ensure this is present or null
+      creatorId: data.creatorId || null, // Ensure creatorId is present or null
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       organizers: organizers,
       status: "active",
-      participants: [], // Track all RSVPs (invited + public)
+      participants: [], // Start with an empty list of RSVPs
+      invitedUsers: [], // Start with an empty list of invited users
     };
 
     const docRef = await db.collection("events").add(eventData);
@@ -57,6 +60,23 @@ const getEventsByUser = async (userId) => {
     return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     throw new Error(`Error getting user events: ${error.message}`);
+  }
+};
+
+const getAllEvents = async (userId) => {
+  try {
+    const snapshot = await db.collection("events").get();
+    const events = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+    return events.filter(
+      (event) =>
+        event.privacy === "public" || // Public events are visible to everyone
+        event.creatorId === userId || // Creator can always see their event
+        event.organizers.includes(userId) || // Organizers can see the event
+        event.invitedUsers.includes(userId) // Invited users can see the event
+    );
+  } catch (error) {
+    throw new Error(`Error getting all events: ${error.message}`);
   }
 };
 
@@ -159,4 +179,5 @@ module.exports = {
   updateEvent,
   getEventById,
   deleteEvent,
+  getAllEvents,
 };

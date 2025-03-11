@@ -45,6 +45,19 @@ const submitRSVP = async (req, res) => {
   }
 };
 
+const checkRSVP = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.user.user_id;
+
+    const rsvp = await rsvpModel.findRSVP(eventId, userId);
+
+    res.status(200).json({ exists: !!rsvp });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const updateRSVPStatus = async (req, res) => {
   try {
     const { rsvpId } = req.params; // Extract rsvpId from URL
@@ -106,36 +119,4 @@ const getRSVPsByStatus = async (req, res) => {
   }
 };
 
-// // controllers/rsvpController.js
-// const createRSVP = async (req, res) => {
-//     try {
-//       const { eventId } = req.params;
-//       const { status, dietaryRequirements, inviteId } = req.body;
-
-//       // Public RSVP checks
-//       if (!inviteId) {
-//         const event = await eventModel.getEvent(eventId);
-//         if (!event.publicRSVPEnabled) {
-//           return res.status(403).json({ error: 'Public RSVP not allowed' });
-//         }
-//       }
-
-//       const rsvpId = await rsvpModel.createRSVP(eventId, req.user.user_id, {
-//         status,
-//         dietaryRequirements,
-//         inviteId
-//       });
-
-//       // Notify organizers
-//       await notificationModel.createOrganizerNotification(
-//         eventId,
-//         `${req.user.email} RSVP'd as ${status}`
-//       );
-
-//       res.status(201).json({ id: rsvpId });
-//     } catch (error) {
-//       res.status(500).json({ error: error.message });
-//     }
-//   };
-
-module.exports = { submitRSVP, updateRSVPStatus, getRSVPsByStatus };
+module.exports = { submitRSVP, updateRSVPStatus, getRSVPsByStatus, checkRSVP };
