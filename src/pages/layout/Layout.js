@@ -8,8 +8,6 @@ const Layout = ({ children, title }) => {
     <div className="h-screen flex bg-[#F0F0F0]">
       {/* LEFT */}
       <div className="w-[14%] md:w-[8%] lg:w-[16%] xl:w-[14%] p-4">
-        {/* Welcome back user */}
-        <div className="mt-4 text-lg font-bold">Welcome back</div>
         <SideBar />
       </div>
       {/* RIGHT */}

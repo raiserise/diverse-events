@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getAuth, signOut } from "firebase/auth";
+import { getAuth, signOut, onAuthStateChanged } from "firebase/auth";
 import {
   Event as EventIcon,
   AccountCircle as ProfileIcon,
@@ -57,6 +57,13 @@ const SideBar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const auth = getAuth();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    });
+  }, [auth]);
 
   const handleSignOut = () => {
     signOut(auth)
@@ -74,6 +81,11 @@ const SideBar = () => {
 
   return (
     <div className="mt-4 text-sm">
+      {user && (
+        <div className="text-center mb-4">
+          <h2 className="text-lg font-bold">Welcome back, {user.displayName}!</h2>
+        </div>
+      )}
       {menuItems.map((menu) => (
         <div className="flex flex-col gap-2" key={menu.title}>
           <span className="hidden lg:block my-4">{menu.title}</span>
