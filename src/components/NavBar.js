@@ -1,6 +1,6 @@
 // src/components/NavBar.js
 import React, { useEffect, useState } from "react";
-import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 const Navbar = ({ pageTitle }) => {
   const [navBarData, setNavBarData] = useState([]);
@@ -13,36 +13,36 @@ const Navbar = ({ pageTitle }) => {
     });
   }, []);
 
-  const handleSignOut = () => {
-    const auth = getAuth();
-    signOut(auth)
-      .then(() => {
-        setUser(null);
-        // Consider setting toast to show that user has signed out
-      })
-      .catch((error) => {
-        console.error("Error signing out: ", error);
-      });
-  };
+  // const handleSignOut = () => {
+  //   const auth = getAuth();
+  //   signOut(auth)
+  //     .then(() => {
+  //       setUser(null);
+  //       // Consider setting toast to show that user has signed out
+  //     })
+  //     .catch((error) => {
+  //       console.error("Error signing out: ", error);
+  //     });
+  // };
 
   useEffect(() => {
     setNavBarData([
-      {
-        title: "Dashboard",
-        link: "/dashboard",
-        show: user ? true : false,
-      },
-      {
-        title: user ? "Signout" : "Login",
-        link: user ? "/" : "/login",
-        show: true,
-        onclick: user ? handleSignOut : null,
-      },
-      {
-        title: "Signup",
-        link: "/signup",
-        show: user ? false : true,
-      },
+      // {
+      //   title: "Dashboard",
+      //   link: "/dashboard",
+      //   show: user ? true : false,
+      // },
+      // {
+      //   title: user ? "Signout" : "Login",
+      //   link: user ? "/" : "/login",
+      //   show: true,
+      //   onclick: user ? handleSignOut : null,
+      // },
+      // {
+      //   title: "Signup",
+      //   link: "/signup",
+      //   show: user ? false : true,
+      // },
     ]);
   }, [user]);
 
