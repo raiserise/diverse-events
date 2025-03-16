@@ -70,6 +70,10 @@ function Events() {
       return;
     }
 
+    // Convert startDate and endDate from string to Date object
+    const startDateTimestamp = formData.startDate ? new Date(formData.startDate) : null;
+    const endDateTimestamp = formData.endDate ? new Date(formData.endDate) : null;
+
     // Prepare new event data with additional fields:
     // - Use default image if none provided.
     // - Add invitedUsers and participants as empty arrays.
@@ -82,6 +86,8 @@ function Events() {
       creatorId: user.uid,
       invitedUsers: [],
       participants: [],
+      startDate: startDateTimestamp,
+      endDate: endDateTimestamp,
     };
 
     const db = getFirestore();

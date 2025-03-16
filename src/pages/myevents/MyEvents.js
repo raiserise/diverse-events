@@ -47,7 +47,7 @@ function MyEvents() {
     return <p className="text-center p-6">No events found</p>;
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
+    <div className="container mx-auto p-8">
       <h1 className="text-3xl font-bold mb-4">My Events</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {myEvents.map((event) => (
@@ -59,6 +59,16 @@ function MyEvents() {
                 className="w-full h-48 object-cover rounded mb-2"
               />
               <h2 className="font-bold text-lg">{event.title}</h2>
+              {event.startDate && event.startDate._seconds && (
+                <p className="text-sm text-gray-500">
+                  Start Date:{" "}
+                  {new Date(event.startDate._seconds * 1000).toLocaleString("en-US", {
+                    timeZone: "Asia/Shanghai",
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                </p>
+              )}
             </Link>
           </div>
         ))}
