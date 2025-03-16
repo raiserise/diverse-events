@@ -6,6 +6,7 @@ import Layout from "./pages/layout/Layout";
 import Landing from "./pages/landing/Landing.js";
 import Dashboard from "./pages/dashboard/Dashboard.js";
 import EventsPage from "./pages/events/Events";
+import MyEvents from "./pages/myevents/MyEvents"; // Import MyEvents page
 import EventDetails from "./pages/events/EventDetails";
 import Invites from "./pages/invite/Invites";
 import RSVP from "./pages/rsvp/RSVP";
@@ -41,6 +42,16 @@ const App = () => {
               <ProtectedRoute>
                 <Layout title={"Events"}>
                   <EventsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/myevents"
+            element={
+              <ProtectedRoute>
+                <Layout title={"My Events"}>
+                  <MyEvents />
                 </Layout>
               </ProtectedRoute>
             }

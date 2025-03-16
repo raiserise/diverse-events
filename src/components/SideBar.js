@@ -9,6 +9,7 @@ import {
   Dashboard as DashboardIcon,
   ExitToApp as SignOutIcon,
 } from "@mui/icons-material";
+import EventNoteIcon from "@mui/icons-material/EventNote"; // For My Events
 
 const menuItems = [
   {
@@ -22,6 +23,11 @@ const menuItems = [
         label: "Events",
         href: "/events",
         icon: <EventIcon />,
+      },
+      {
+        label: "My Events",
+        href: "/myevents",
+        icon: <EventNoteIcon />,
       },
       {
         label: "Invites",
@@ -48,7 +54,7 @@ const menuItems = [
         href: "#",
         icon: <SignOutIcon />,
         onClick: "handleSignOut",
-      }
+      },
     ],
   },
 ];
@@ -60,17 +66,13 @@ const SideBar = () => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    onAuthStateChanged(auth, (user) => {
-      setUser(user);
-    });
+    onAuthStateChanged(auth, (user) => setUser(user));
   }, [auth]);
 
   const handleSignOut = () => {
     signOut(auth)
       .then(() => {
-        // Clear local storage
         localStorage.removeItem("user");
-        // Navigate to login
         navigate("/");
         console.log("Sign out successful");
       })
@@ -86,38 +88,42 @@ const SideBar = () => {
           <h2 className="text-lg font-bold">Welcome back, {user.displayName}!</h2>
         </div>
       )}
-      {menuItems.map((menu) => (
-        <div className="flex flex-col gap-2" key={menu.title}>
-          <span className="hidden lg:block my-4">{menu.title}</span>
+      {menuItems.map((menu, index) => (
+        <div className="flex flex-col gap-2" key={index}>
+          {menu.title && <span className="hidden lg:block my-4">{menu.title}</span>}
           {menu.items.map((item) => {
             const isActive = location.pathname === item.href;
-            return item.label === "Sign Out" ? (
-              <button
-                key={item.label}
-                onClick={handleSignOut}
-                className={`flex items-center justify-center lg:justify-start gap-4 py-2 md:px-2 rounded-md ${
-                  isActive
-                    ? "bg-[#C0C0C0] text-black"
-                    : "text-black-500 hover:bg-[#C0C0C0]"
-                }`}
-              >
-                <span className="text-lg">{item.icon}</span>
-                <span className="hidden lg:block">{item.label}</span>
-              </button>
-            ) : (
-              <Link
-                to={item.href}
-                key={item.label}
-                className={`flex items-center justify-center lg:justify-start gap-4 py-2 md:px-2 rounded-md ${
-                  isActive
-                    ? "bg-[#C0C0C0] text-black"
-                    : "text-black-500 hover:bg-[#C0C0C0]"
-                }`}
-              >
-                <span className="text-lg">{item.icon}</span>
-                <span className="hidden lg:block">{item.label}</span>
-              </Link>
-            );
+            if (item.label === "Sign Out") {
+              return (
+                <button
+                  key={item.label}
+                  onClick={handleSignOut}
+                  className={`flex items-center justify-center lg:justify-start gap-4 py-2 md:px-2 rounded-md ${
+                    isActive
+                      ? "bg-[#C0C0C0] text-black"
+                      : "text-black-500 hover:bg-[#C0C0C0]"
+                  }`}
+                >
+                  <span className="text-lg">{item.icon}</span>
+                  <span className="hidden lg:block">{item.label}</span>
+                </button>
+              );
+            } else {
+              return (
+                <Link
+                  to={item.href}
+                  key={item.label}
+                  className={`flex items-center justify-center lg:justify-start gap-4 py-2 md:px-2 rounded-md ${
+                    isActive
+                      ? "bg-[#C0C0C0] text-black"
+                      : "text-black-500 hover:bg-[#C0C0C0]"
+                  }`}
+                >
+                  <span className="text-lg">{item.icon}</span>
+                  <span className="hidden lg:block">{item.label}</span>
+                </Link>
+              );
+            }
           })}
         </div>
       ))}

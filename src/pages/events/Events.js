@@ -29,14 +29,10 @@ function Events() {
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Pagination states
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const itemsPerPage = 4;
-
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Form state for the new event (added status field)
+  // Form state for the new event (including status)
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -52,7 +48,7 @@ function Events() {
     privacy: "public",
     format: "",
     terms: "",
-    status: "active", // new field with default value "active"
+    status: "active", // new dropdown field with default "active"
   });
 
   // Handle changes for all input fields
@@ -97,7 +93,6 @@ function Events() {
       });
       console.log("Document written with ID:", docRef.id);
 
-      // Show success toast notification with autoClose callback
       toast.success("Event created successfully!", {
         autoClose: 1500,
         onClose: () => window.location.reload(),
@@ -130,7 +125,6 @@ function Events() {
     );
 
     setFilteredEvents(results);
-    setCurrentIndex(0);
   }, [
     events,
     privateEvent,
@@ -140,23 +134,6 @@ function Events() {
     searchParams,
     searchQuery,
   ]);
-
-  // Determine which events to display on the current page
-  const totalEvents = filteredEvents.length;
-  const displayedEvents = filteredEvents.slice(
-    currentIndex,
-    currentIndex + itemsPerPage
-  );
-
-  const handlePrev = () => {
-    setCurrentIndex((prev) => Math.max(prev - itemsPerPage, 0));
-  };
-
-  const handleNext = () => {
-    setCurrentIndex((prev) =>
-      Math.min(prev + itemsPerPage, totalEvents - itemsPerPage)
-    );
-  };
 
   return (
     <>
@@ -187,10 +164,10 @@ function Events() {
         <div>
           {error && <p>{error}</p>}
 
-          {/* Events Grid */}
+          {/* Events Grid: display all filtered events in rows of 4 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            {displayedEvents.length > 0 ? (
-              displayedEvents.map((event, index) => (
+            {filteredEvents.length > 0 ? (
+              filteredEvents.map((event, index) => (
                 <div
                   key={index}
                   className="p-1 border border-gray-200 rounded-sm flex flex-col items-center"
@@ -214,26 +191,6 @@ function Events() {
               <p className="text-neutral-500">No events found</p>
             )}
           </div>
-
-          {/* Pagination Controls */}
-          {totalEvents > itemsPerPage && (
-            <div className="flex justify-center space-x-4 mt-4">
-              <button
-                onClick={handlePrev}
-                disabled={currentIndex === 0}
-                className="px-4 py-2 border rounded disabled:opacity-50"
-              >
-                &larr; Previous
-              </button>
-              <button
-                onClick={handleNext}
-                disabled={currentIndex + itemsPerPage >= totalEvents}
-                className="px-4 py-2 border rounded disabled:opacity-50"
-              >
-                Next &rarr;
-              </button>
-            </div>
-          )}
         </div>
       )}
 
@@ -394,7 +351,7 @@ function Events() {
                 </label>
               </div>
 
-              {/* Featured Image URL (optional) */}
+              {/* Featured Image URL (Optional) */}
               <div className="mb-4">
                 <label htmlFor="featuredImage" className="block text-sm font-medium mb-1">
                   Featured Image URL (optional)
