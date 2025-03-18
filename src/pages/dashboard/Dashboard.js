@@ -6,7 +6,7 @@ import 'react-calendar/dist/Calendar.css';
 const DashboardPage = () => {
   const [date, setDate] = useState(new Date());
   const [events, setEvents] = useState([]);
-  const [userEvents, setUserEvents] = useState([]);
+  // const [userEvents, setUserEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -20,7 +20,7 @@ const DashboardPage = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const data = await getAllData("/events");
+        const data = await getAllData("/events", false);
         setEvents(data);
       } catch (error) {
         setError(error.message);
@@ -32,20 +32,20 @@ const DashboardPage = () => {
     fetchEvents();
   }, []);
 
-  useEffect(() => {
-    const fetchUserEvents = async () => {
-      try {
-        const data = await getAllData("/user-events");
-        setUserEvents(data);
-      } catch (error) {
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // useEffect(() => {
+  //   const fetchUserEvents = async () => {
+  //     try {
+  //       const data = await getAllData("/user-events", false);
+  //       setUserEvents(data);
+  //     } catch (error) {
+  //       setError(error.message);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    fetchUserEvents();
-  }, []);
+  //   fetchUserEvents();
+  // }, []);
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
@@ -60,24 +60,34 @@ const DashboardPage = () => {
             />
           </div>
           <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-md flex-1 min-w-[200px]">
-            <h2 className="text-xl mb-2">Upcoming Events</h2>
-            {loading ? (
-              <p>Loading events...</p>
-            ) : error ? (
-              <p>{error}</p>
-            ) : events.length > 0 ? (
-              <ul>
-                {events.map((event) => (
-                  <li key={event.id}>
-                    <strong>{event.title}</strong>: {event.description}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No upcoming events</p>
-            )}
+  <h2 className="text-xl mb-2">Upcoming Events</h2>
+  {loading ? (
+    <p>Loading events...</p>
+  ) : error ? (
+    <p>{error}</p>
+  ) : events.length > 0 ? (
+    <ul className="space-y-4">
+      {events.map((event) => (
+        <li key={event.id} className="flex items-center gap-4">
+          {/* Event Image */}
+          <img
+            src={event.featuredImage || "/default-event"} // Fallback to placeholder if no image
+            alt={event.title}
+            className="w-16 h-16 object-cover rounded-lg border border-gray-300"
+          />
+          {/* Event Details */}
+          <div>
+            <strong className="block text-lg">{event.title}</strong>
+            <p className="text-sm text-gray-600">{event.description}</p>
           </div>
-          <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-md flex-1 min-w-[200px]">
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p>No upcoming events</p>
+  )}
+</div>
+          {/* <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-md flex-1 min-w-[200px]">
             <h2 className="text-xl mb-2">Your Events</h2>
             {loading ? (
               <p>Loading your events...</p>
@@ -94,7 +104,7 @@ const DashboardPage = () => {
             ) : (
               <p>No events found</p>
             )}
-          </div>
+          </div> */}
         </div>
       </main>
     </div>
