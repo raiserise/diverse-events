@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { getAllData } from "../../api/apiService";
 import Calendar from "react-calendar";
-import 'react-calendar/dist/Calendar.css';
+import "react-calendar/dist/Calendar.css";
+
+import Notifications from "../notification/Notifications";
+import FirebaseImage from "../../components/FirebaseImage";
 
 const DashboardPage = () => {
   const [date, setDate] = useState(new Date());
@@ -51,6 +54,7 @@ const DashboardPage = () => {
     <div className="flex flex-col h-screen bg-gray-100">
       <main className="flex-1 p-4 overflow-y-auto">
         <div className="flex flex-wrap gap-4">
+          {/* Current Date & Time */}
           <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-md flex-1 min-w-[200px]">
             <h2 className="text-xl mb-2">Current Date & Time</h2>
             <p>{date.toString()}</p>
@@ -59,26 +63,26 @@ const DashboardPage = () => {
               className="reactp-2 border border-gray-300 rounded-lg shadow-inner"
             />
           </div>
-          <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-md flex-1 min-w-[200px]">
-  <h2 className="text-xl mb-2">Upcoming Events</h2>
+
+       {/* Upcoming Events */}
+<div className="bg-white border border-gray-300 rounded-lg p-4 shadow-md flex-1 min-w-[300px]">
+  <h2 className="text-xl mb-4">Upcoming Events</h2>
   {loading ? (
     <p>Loading events...</p>
   ) : error ? (
     <p>{error}</p>
   ) : events.length > 0 ? (
-    <ul className="space-y-4">
+    <ul className="space-y-6">
       {events.map((event) => (
-        <li key={event.id} className="flex items-center gap-4">
-          {/* Event Image */}
-          <img
-            src={event.featuredImage || "/default-event"} // Fallback to placeholder if no image
+        <li key={event.id} className="flex items-start gap-6">
+          <FirebaseImage
+            path={event.featuredImage}
             alt={event.title}
-            className="w-16 h-16 object-cover rounded-lg border border-gray-300"
+            className="w-32 h-32 object-cover rounded-lg border border-gray-300 shadow-md"
           />
-          {/* Event Details */}
-          <div>
-            <strong className="block text-lg">{event.title}</strong>
-            <p className="text-sm text-gray-600">{event.description}</p>
+          <div className="flex-1">
+            <strong className="block text-lg font-semibold">{event.title}</strong>
+            <p className="text-sm text-gray-600 mt-1">{event.description}</p>
           </div>
         </li>
       ))}
@@ -87,24 +91,8 @@ const DashboardPage = () => {
     <p>No upcoming events</p>
   )}
 </div>
-          {/* <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-md flex-1 min-w-[200px]">
-            <h2 className="text-xl mb-2">Your Events</h2>
-            {loading ? (
-              <p>Loading your events...</p>
-            ) : error ? (
-              <p>{error}</p>
-            ) : userEvents.length > 0 ? (
-              <ul>
-                {userEvents.map((event) => (
-                  <li key={event.id}>
-                    <strong>{event.title}</strong>: {event.description}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No events found</p>
-            )}
-          </div> */}
+          {/* Notifications */}
+          <Notifications />
         </div>
       </main>
     </div>
