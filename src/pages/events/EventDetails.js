@@ -48,6 +48,16 @@ function EventDetails() {
           setError("Event not found.");
           return;
         }
+        // Privacy Check: If the event is private, ensure the user is allowed to view it.
+        if (user && eventData.privacy === "private") {
+          const allowed =
+            (eventData.organizers || []).includes(user.uid) ||
+            (eventData.invitedUsers || []).includes(user.uid);
+          if (!allowed) {
+            setError("You are not authorized to view this private event.");
+            return;
+          }
+        }
         // Inject the event ID into the event object
         setEvent({ id, ...eventData });
         // Fetch organizers if available
@@ -100,33 +110,33 @@ function EventDetails() {
     }
   };
 
-// Handler for showing the edit modal (populates edit form data)
-const handleEditClick = () => {
-  setEditFormData({
-    title: event.title || "",
-    description: event.description || "",
-    category: Array.isArray(event.category) ? event.category.join(", ") : "",
-    location: event.location || "",
-    startDate:
-      event.startDate && event.startDate._seconds
-        ? new Date(event.startDate._seconds * 1000).toISOString().slice(0, 16)
-        : "",
-    endDate:
-      event.endDate && event.endDate._seconds
-        ? new Date(event.endDate._seconds * 1000).toISOString().slice(0, 16)
-        : "",
-    duration: event.duration || "",
-    language: event.language || "",
-    acceptsRSVP: event.acceptsRSVP || false,
-    featuredImage: event.featuredImage || "",
-    maxParticipants: event.maxParticipants || "",
-    privacy: event.privacy || "public",
-    format: event.format || "",
-    terms: event.terms || "",
-    status: event.status || "active",
-  });
-  setIsEditModalOpen(true);
-};
+  // Handler for showing the edit modal (populates edit form data)
+  const handleEditClick = () => {
+    setEditFormData({
+      title: event.title || "",
+      description: event.description || "",
+      category: Array.isArray(event.category) ? event.category.join(", ") : "",
+      location: event.location || "",
+      startDate:
+        event.startDate && event.startDate._seconds
+          ? new Date(event.startDate._seconds * 1000).toISOString().slice(0, 16)
+          : "",
+      endDate:
+        event.endDate && event.endDate._seconds
+          ? new Date(event.endDate._seconds * 1000).toISOString().slice(0, 16)
+          : "",
+      duration: event.duration || "",
+      language: event.language || "",
+      acceptsRSVP: event.acceptsRSVP || false,
+      featuredImage: event.featuredImage || "",
+      maxParticipants: event.maxParticipants || "",
+      privacy: event.privacy || "public",
+      format: event.format || "",
+      terms: event.terms || "",
+      status: event.status || "active",
+    });
+    setIsEditModalOpen(true);
+  };
 
   // Handler for changes in the edit form
   const handleEditChange = (e) => {
@@ -137,38 +147,37 @@ const handleEditClick = () => {
     }));
   };
 
-// Handler for submitting the edit form
-const handleEditSubmit = async (e) => {
-  e.preventDefault();
-  if (!user) {
-    toast.error("You must be logged in to edit an event.");
-    return;
-  }
-  // Convert the datetime-local strings to Date objects
-  const updatedStartDate = editFormData.startDate ? new Date(editFormData.startDate) : null;
-  const updatedEndDate = editFormData.endDate ? new Date(editFormData.endDate) : null;
+  // Handler for submitting the edit form
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      toast.error("You must be logged in to edit an event.");
+      return;
+    }
+    // Convert the datetime-local strings to Date objects so Firestore stores them as timestamps
+    const updatedStartDate = editFormData.startDate ? new Date(editFormData.startDate) : null;
+    const updatedEndDate = editFormData.endDate ? new Date(editFormData.endDate) : null;
 
-  // Prepare updated data (convert category to array)
-  const updatedData = {
-    ...editFormData,
-    category: editFormData.category.split(",").map((cat) => cat.trim()),
-    updatedAt: serverTimestamp(),
-    startDate: updatedStartDate,
-    endDate: updatedEndDate,
+    // Prepare updated data (convert category to array)
+    const updatedData = {
+      ...editFormData,
+      category: editFormData.category.split(",").map((cat) => cat.trim()),
+      updatedAt: serverTimestamp(),
+      startDate: updatedStartDate,
+      endDate: updatedEndDate,
+    };
+
+    const db = getFirestore();
+    try {
+      await updateDoc(doc(db, "events", event.id), updatedData);
+      toast.success("Event updated successfully!");
+      setIsEditModalOpen(false);
+      window.location.reload();
+    } catch (error) {
+      console.error("Error updating event:", error);
+      toast.error("Error updating event. Please try again.");
+    }
   };
-
-  const db = getFirestore();
-  try {
-    await updateDoc(doc(db, "events", event.id), updatedData);
-    toast.success("Event updated successfully!");
-    setIsEditModalOpen(false);
-    // Refresh the event data (or page)
-    window.location.reload();
-  } catch (error) {
-    console.error("Error updating event:", error);
-    toast.error("Error updating event. Please try again.");
-  }
-};
 
   if (loading)
     return (

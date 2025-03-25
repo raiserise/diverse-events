@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getAuth, signOut, onAuthStateChanged } from "firebase/auth";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 import {
   Event as EventIcon,
   AccountCircle as ProfileIcon,
@@ -64,10 +65,33 @@ const SideBar = () => {
   const navigate = useNavigate();
   const auth = getAuth();
   const [user, setUser] = useState(null);
+  const [profileName, setProfileName] = useState("");
 
   useEffect(() => {
-    onAuthStateChanged(auth, (user) => setUser(user));
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
   }, [auth]);
+
+  // Fetch custom user data from Firestore to get the name
+  useEffect(() => {
+    if (user) {
+      const db = getFirestore();
+      getDoc(doc(db, "users", user.uid))
+        .then((docSnap) => {
+          if (docSnap.exists()) {
+            setProfileName(docSnap.data().name || user.displayName || user.email);
+          } else {
+            setProfileName(user.displayName || user.email);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching user data:", error);
+          setProfileName(user.displayName || user.email);
+        });
+    }
+  }, [user]);
 
   const handleSignOut = () => {
     signOut(auth)
@@ -85,7 +109,9 @@ const SideBar = () => {
     <div className="mt-4 text-sm">
       {user && (
         <div className="text-center mb-4">
-          <h2 className="text-lg font-bold">Welcome back, {user.displayName}!</h2>
+          <h2 className="text-lg font-bold">
+            Welcome back, {profileName}!
+          </h2>
         </div>
       )}
       {menuItems.map((menu, index) => (
@@ -93,37 +119,33 @@ const SideBar = () => {
           {menu.title && <span className="hidden lg:block my-4">{menu.title}</span>}
           {menu.items.map((item) => {
             const isActive = location.pathname === item.href;
-            if (item.label === "Sign Out") {
-              return (
-                <button
-                  key={item.label}
-                  onClick={handleSignOut}
-                  className={`flex items-center justify-center lg:justify-start gap-4 py-2 md:px-2 rounded-md ${
-                    isActive
-                      ? "bg-[#C0C0C0] text-black"
-                      : "text-black-500 hover:bg-[#C0C0C0]"
-                  }`}
-                >
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="hidden lg:block">{item.label}</span>
-                </button>
-              );
-            } else {
-              return (
-                <Link
-                  to={item.href}
-                  key={item.label}
-                  className={`flex items-center justify-center lg:justify-start gap-4 py-2 md:px-2 rounded-md ${
-                    isActive
-                      ? "bg-[#C0C0C0] text-black"
-                      : "text-black-500 hover:bg-[#C0C0C0]"
-                  }`}
-                >
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="hidden lg:block">{item.label}</span>
-                </Link>
-              );
-            }
+            return item.label === "Sign Out" ? (
+              <button
+                key={item.label}
+                onClick={handleSignOut}
+                className={`flex items-center justify-center lg:justify-start gap-4 py-2 md:px-2 rounded-md ${
+                  isActive
+                    ? "bg-[#C0C0C0] text-black"
+                    : "text-black-500 hover:bg-[#C0C0C0]"
+                }`}
+              >
+                <span className="text-lg">{item.icon}</span>
+                <span className="hidden lg:block">{item.label}</span>
+              </button>
+            ) : (
+              <Link
+                to={item.href}
+                key={item.label}
+                className={`flex items-center justify-center lg:justify-start gap-4 py-2 md:px-2 rounded-md ${
+                  isActive
+                    ? "bg-[#C0C0C0] text-black"
+                    : "text-black-500 hover:bg-[#C0C0C0]"
+                }`}
+              >
+                <span className="text-lg">{item.icon}</span>
+                <span className="hidden lg:block">{item.label}</span>
+              </Link>
+            );
           })}
         </div>
       ))}
