@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getAllData, patchData } from "../../api/apiService"; // Assuming you have these utility functions
+import { getAllData, patchData } from "../../api/apiService";
 
 const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -7,8 +7,7 @@ const Notifications = () => {
 
   const fetchNotifications = async () => {
     try {
-      // Fetch all notifications (not just user-specific)
-      const data = await getAllData("/notifications"); // Pass false because no authentication is required
+      const data = await getAllData("/notifications");
       setNotifications(data);
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -18,24 +17,15 @@ const Notifications = () => {
   };
 
   useEffect(() => {
-    fetchNotifications(); // Fetch notifications when component mounts
+    fetchNotifications();
   }, []);
 
-  // Function to mark a notification as read
   const handleNotificationClick = async (notificationId) => {
     try {
-      // Send a request to mark the notification as read
-      await patchData(
-        `/notifications/${notificationId}/read`,
-        notificationId,
-        {}
-      );
-      // Optimistically update UI
+      await patchData(`/notifications/${notificationId}/read`, {}); 
       setNotifications((prev) =>
         prev.map((notification) =>
-          notification.id === notificationId
-            ? { ...notification, read: true }
-            : notification
+          notification.id === notificationId ? { ...notification, read: true } : notification
         )
       );
     } catch (error) {
@@ -68,7 +58,6 @@ const Notifications = () => {
             <small>
                 {new Date(notification.createdAt._seconds * 1000).toLocaleDateString()}
             </small>
-            {/* Converting Firestore timestamp to a readable date */}
           </div>
         ))
       ) : (
