@@ -1,10 +1,11 @@
 // src/pages/MyEvents.js
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthProvider";
-import { getFirestore, collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { getFirestore, collection, query, where, getDocs} from "firebase/firestore";
 import { Link } from "react-router-dom";
 import FirebaseImage from "../../components/FirebaseImage";
-import { toast } from "react-toastify";
+// import { toast } from "react-toastify";
+import CreateEventModal from "../../components/CreateEventModal";
 
 const DEFAULT_IMAGE = "gs://diverseevents-af6ea.firebasestorage.app/noimage.jpg";
 
@@ -15,81 +16,81 @@ function MyEvents() {
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   // Form state for the new event (including status)
-    const [formData, setFormData] = useState({
-      title: "",
-      description: "",
-      category: "", // comma-separated, e.g., "Sports, Entertainment"
-      location: "",
-      startDate: "",
-      endDate: "",
-      duration: "",
-      language: "",
-      acceptsRSVP: false,
-      featuredImage: "",
-      maxParticipants: "",
-      privacy: "public",
-      format: "",
-      terms: "",
-      status: "active", // new dropdown field with default "active"
-    });
+    // const [formData, setFormData] = useState({
+    //   title: "",
+    //   description: "",
+    //   category: "", // comma-separated, e.g., "Sports, Entertainment"
+    //   location: "",
+    //   startDate: "",
+    //   endDate: "",
+    //   duration: "",
+    //   language: "",
+    //   acceptsRSVP: false,
+    //   featuredImage: "",
+    //   maxParticipants: "",
+    //   privacy: "public",
+    //   format: "",
+    //   terms: "",
+    //   status: "active", // new dropdown field with default "active"
+    // });
   
     // Handle changes for all input fields
-    const handleChange = (e) => {
-      const { name, value, type, checked } = e.target;
-      setFormData((prev) => ({
-        ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      }));
-    };
+    // const handleChange = (e) => {
+    //   const { name, value, type, checked } = e.target;
+    //   setFormData((prev) => ({
+    //     ...prev,
+    //     [name]: type === "checkbox" ? checked : value,
+    //   }));
+    // };
 
-    // Handle form submission and add a new event document to Firestore
-      const handleSubmit = async (e) => {
-        e.preventDefault();
+    // // Handle form submission and add a new event document to Firestore
+    //   const handleSubmit = async (e) => {
+    //     e.preventDefault();
     
-        if (!user) {
-          console.error("No user is logged in!");
-          toast.error("You must be logged in to create an event.");
-          return;
-        }
+    //     if (!user) {
+    //       console.error("No user is logged in!");
+    //       toast.error("You must be logged in to create an event.");
+    //       return;
+    //     }
     
-        // Convert startDate and endDate from string to Date object
-        const startDateTimestamp = formData.startDate ? new Date(formData.startDate) : null;
-        const endDateTimestamp = formData.endDate ? new Date(formData.endDate) : null;
+    //     // Convert startDate and endDate from string to Date object
+    //     const startDateTimestamp = formData.startDate ? new Date(formData.startDate) : null;
+    //     const endDateTimestamp = formData.endDate ? new Date(formData.endDate) : null;
     
-        // Prepare new event data with additional fields:
-        // - Use default image if none provided.
-        // - Add invitedUsers and participants as empty arrays.
-        // - Include status field.
-        const newEventData = {
-          ...formData,
-          category: formData.category.split(",").map((cat) => cat.trim()),
-          featuredImage: formData.featuredImage ? formData.featuredImage : DEFAULT_IMAGE,
-          organizers: [user.uid],
-          creatorId: user.uid,
-          invitedUsers: [],
-          participants: [],
-          startDate: startDateTimestamp,
-          endDate: endDateTimestamp,
-        };
+    //     // Prepare new event data with additional fields:
+    //     // - Use default image if none provided.
+    //     // - Add invitedUsers and participants as empty arrays.
+    //     // - Include status field.
+    //     const newEventData = {
+    //       ...formData,
+    //       category: formData.category.split(",").map((cat) => cat.trim()),
+    //       featuredImage: formData.featuredImage ? formData.featuredImage : DEFAULT_IMAGE,
+    //       organizers: [user.uid],
+    //       creatorId: user.uid,
+    //       invitedUsers: [],
+    //       participants: [],
+    //       startDate: startDateTimestamp,
+    //       endDate: endDateTimestamp,
+    //     };
     
-        const db = getFirestore();
+    //     const db = getFirestore();
     
-        try {
-          const docRef = await addDoc(collection(db, "events"), {
-            ...newEventData,
-            createdAt: serverTimestamp(),
-          });
-          console.log("Document written with ID:", docRef.id);
+    //     try {
+    //       const docRef = await addDoc(collection(db, "events"), {
+    //         ...newEventData,
+    //         createdAt: serverTimestamp(),
+    //       });
+    //       console.log("Document written with ID:", docRef.id);
     
-          toast.success("Event created successfully!", {
-            autoClose: 1500,
-            onClose: () => window.location.reload(),
-          });
-        } catch (error) {
-          console.error("Error adding document:", error);
-          toast.error("Error creating event. Please try again.");
-        }
-      };
+    //       toast.success("Event created successfully!", {
+    //         autoClose: 1500,
+    //         onClose: () => window.location.reload(),
+    //       });
+    //     } catch (error) {
+    //       console.error("Error adding document:", error);
+    //       toast.error("Error creating event. Please try again.");
+    //     }
+    //   };
 
   useEffect(() => {
     if (!user) {
@@ -168,273 +169,7 @@ function MyEvents() {
         +
       </button>
       {/* Modal */}
-{isModalOpen && (
-  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-  <div className="bg-white p-6 rounded-lg shadow-lg w-[800px] overflow-y-auto max-h-full">
-    <h2 className="text-lg font-bold mb-4">Add New Event</h2>
-    <form onSubmit={handleSubmit}>
-      {/* Title */}
-      <div className="mb-4">
-        <label htmlFor="title" className="block text-sm font-medium mb-1">
-          Title <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          id="title"
-          name="title"
-          value={formData.title}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-          required
-        />
-      </div>
-
-      {/* Description */}
-      <div className="mb-4">
-        <label htmlFor="description" className="block text-sm font-medium mb-1">
-          Description <span className="text-red-500">*</span>
-        </label>
-        <textarea
-          id="description"
-          name="description"
-          value={formData.description}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-          rows="3"
-          required
-        ></textarea>
-      </div>
-
-      {/* Category */}
-      <div className="mb-4">
-        <label htmlFor="category" className="block text-sm font-medium mb-1">
-          Category (comma-separated) <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          id="category"
-          name="category"
-          value={formData.category}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-          required
-        />
-      </div>
-
-      {/* Location */}
-      <div className="mb-4">
-        <label htmlFor="location" className="block text-sm font-medium mb-1">
-          Location <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          id="location"
-          name="location"
-          value={formData.location}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-          required
-        />
-      </div>
-
-      {/* Start Date */}
-      <div className="mb-4">
-        <label htmlFor="startDate" className="block text-sm font-medium mb-1">
-          Start Date <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="datetime-local"
-          id="startDate"
-          name="startDate"
-          value={formData.startDate}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-          required
-        />
-      </div>
-
-      {/* End Date */}
-      <div className="mb-4">
-        <label htmlFor="endDate" className="block text-sm font-medium mb-1">
-          End Date <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="datetime-local"
-          id="endDate"
-          name="endDate"
-          value={formData.endDate}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-          required
-        />
-      </div>
-
-      {/* Duration */}
-      <div className="mb-4">
-        <label htmlFor="duration" className="block text-sm font-medium mb-1">
-          Duration (hours) <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          id="duration"
-          name="duration"
-          value={formData.duration}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-          required
-        />
-      </div>
-
-      {/* Language */}
-      <div className="mb-4">
-        <label htmlFor="language" className="block text-sm font-medium mb-1">
-          Language <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          id="language"
-          name="language"
-          value={formData.language}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-          required
-        />
-      </div>
-
-      {/* Accepts RSVP (Optional) */}
-      <div className="mb-4 flex items-center">
-        <input
-          type="checkbox"
-          id="acceptsRSVP"
-          name="acceptsRSVP"
-          checked={formData.acceptsRSVP}
-          onChange={handleChange}
-          className="mr-2"
-        />
-        <label htmlFor="acceptsRSVP" className="text-sm font-medium">
-          Accepts RSVP
-        </label>
-      </div>
-
-      {/* Featured Image URL (Optional) */}
-      <div className="mb-4">
-        <label htmlFor="featuredImage" className="block text-sm font-medium mb-1">
-          Featured Image URL (optional)
-        </label>
-        <input
-          type="text"
-          id="featuredImage"
-          name="featuredImage"
-          value={formData.featuredImage}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-        />
-      </div>
-
-      {/* Max Participants */}
-      <div className="mb-4">
-        <label htmlFor="maxParticipants" className="block text-sm font-medium mb-1">
-          Max Participants <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="number"
-          id="maxParticipants"
-          name="maxParticipants"
-          value={formData.maxParticipants}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-          required
-        />
-      </div>
-
-      {/* Privacy */}
-      <div className="mb-4">
-        <label htmlFor="privacy" className="block text-sm font-medium mb-1">
-          Privacy <span className="text-red-500">*</span>
-        </label>
-        <select
-          id="privacy"
-          name="privacy"
-          value={formData.privacy}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-          required
-        >
-          <option value="public">Public</option>
-          <option value="private">Private</option>
-        </select>
-      </div>
-
-      {/* Format */}
-      <div className="mb-4">
-        <label htmlFor="format" className="block text-sm font-medium mb-1">
-          Format <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          id="format"
-          name="format"
-          value={formData.format}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-          required
-        />
-      </div>
-
-      {/* Status (New Dropdown Field) */}
-      <div className="mb-4">
-        <label htmlFor="status" className="block text-sm font-medium mb-1">
-          Status <span className="text-red-500">*</span>
-        </label>
-        <select
-          id="status"
-          name="status"
-          value={formData.status}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-          required
-        >
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-      </div>
-
-      {/* Terms */}
-      <div className="mb-4">
-        <label htmlFor="terms" className="block text-sm font-medium mb-1">
-          Terms & Conditions <span className="text-red-500">*</span>
-        </label>
-        <textarea
-          id="terms"
-          name="terms"
-          value={formData.terms}
-          onChange={handleChange}
-          className="w-full border rounded p-2"
-          rows="3"
-          required
-        ></textarea>
-      </div>
-
-      {/* Form Buttons */}
-      <div className="flex justify-between">
-        <button
-          type="submit"
-          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition"
-        >
-          Submit
-        </button>
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(false)}
-          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
-)}
+      <CreateEventModal isOpen={isModalOpen} user={user} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 }
