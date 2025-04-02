@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, updateDoc, doc, serverTimestamp } from "firebase/firestore";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 function EventDetails() {
   const { id } = useParams();
@@ -22,6 +23,8 @@ function EventDetails() {
   // State for the edit modal and its form data
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState(null);
+  // New state for the image file in edit mode
+  const [editImageFile, setEditImageFile] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -30,7 +33,7 @@ function EventDetails() {
     return () => unsubscribe();
   }, [auth]);
 
-  // Fetch event data with authentication
+  // Fetch event data with authentication and perform privacy check
   useEffect(() => {
     const fetchEvent = async () => {
       try {
@@ -48,8 +51,12 @@ function EventDetails() {
           setError("Event not found.");
           return;
         }
-        // Privacy Check: If the event is private, ensure the user is allowed to view it.
-        if (user && eventData.privacy === "private") {
+        // Privacy check: if private, ensure current user is allowed
+        if (eventData.privacy === "private") {
+          if (!user) {
+            setError("Authentication required to view this private event.");
+            return;
+          }
           const allowed =
             (eventData.organizers || []).includes(user.uid) ||
             (eventData.invitedUsers || []).includes(user.uid);
@@ -60,7 +67,6 @@ function EventDetails() {
         }
         // Inject the event ID into the event object
         setEvent({ id, ...eventData });
-        // Fetch organizers if available
         if (eventData.organizers?.length) {
           const orgs = await Promise.all(
             eventData.organizers.map((orgId) => getDataById("/users", orgId, true))
@@ -135,16 +141,44 @@ function EventDetails() {
       terms: event.terms || "",
       status: event.status || "active",
     });
+    // Clear any previously selected file
+    setEditImageFile(null);
     setIsEditModalOpen(true);
   };
 
-  // Handler for changes in the edit form
+  // Handler for changes in the edit form (for text, number, checkbox fields)
   const handleEditChange = (e) => {
     const { name, value, type, checked } = e.target;
     setEditFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+  };
+
+  // New handler for file input change in the edit modal
+  const handleEditFileChange = (e) => {
+    if (e.target.files[0]) {
+      setEditImageFile(e.target.files[0]);
+    }
+  };
+
+  // Helper function to upload an image file to Firebase Storage
+  const uploadImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const storage = getStorage();
+      const storageRef = ref(storage, `events/${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      uploadTask.on(
+        "state_changed",
+        null,
+        (error) => reject(error),
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref)
+            .then((url) => resolve(url))
+            .catch((err) => reject(err));
+        }
+      );
+    });
   };
 
   // Handler for submitting the edit form
@@ -154,9 +188,20 @@ function EventDetails() {
       toast.error("You must be logged in to edit an event.");
       return;
     }
-    // Convert the datetime-local strings to Date objects so Firestore stores them as timestamps
+    // Convert datetime-local strings to Date objects so Firestore stores them as timestamps
     const updatedStartDate = editFormData.startDate ? new Date(editFormData.startDate) : null;
     const updatedEndDate = editFormData.endDate ? new Date(editFormData.endDate) : null;
+
+    // If a new image file was selected, upload it first
+    let newFeaturedImage = editFormData.featuredImage;
+    if (editImageFile) {
+      try {
+        newFeaturedImage = await uploadImage(editImageFile);
+      } catch (err) {
+        console.error("Error uploading image:", err);
+        toast.error("Image upload failed. Using previous image.");
+      }
+    }
 
     // Prepare updated data (convert category to array)
     const updatedData = {
@@ -165,6 +210,7 @@ function EventDetails() {
       updatedAt: serverTimestamp(),
       startDate: updatedStartDate,
       endDate: updatedEndDate,
+      featuredImage: newFeaturedImage,
     };
 
     const db = getFirestore();
@@ -414,7 +460,7 @@ function EventDetails() {
         </div>
       )}
 
-      {/* Edit Button for Organizers - now positioned at bottom right */}
+      {/* Edit Button for Organizers - positioned at bottom right */}
       {organizers.some((org) => org.id === user?.uid) && (
         <button
           onClick={handleEditClick}
@@ -574,18 +620,17 @@ function EventDetails() {
                   </label>
                 </div>
 
-                {/* Featured Image URL */}
+                {/* Upload Featured Image */}
                 <div className="mb-4">
-                  <label htmlFor="editFeaturedImage" className="block text-sm font-medium mb-1">
-                    Featured Image URL (optional)
+                  <label htmlFor="editFeaturedImageFile" className="block text-sm font-medium mb-1">
+                    Upload New Featured Image (optional)
                   </label>
                   <input
-                    type="text"
-                    id="editFeaturedImage"
-                    name="featuredImage"
-                    value={editFormData.featuredImage}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
+                    type="file"
+                    id="editFeaturedImageFile"
+                    accept="image/*"
+                    onChange={handleEditFileChange}
+                    className="w-full"
                   />
                 </div>
 

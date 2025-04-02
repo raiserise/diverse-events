@@ -6,6 +6,7 @@ import FirebaseImage from "../../components/FirebaseImage";
 import { useAuth } from "../../context/AuthProvider";
 import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { toast } from "react-toastify";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 const DEFAULT_IMAGE = "gs://diverseevents-af6ea.firebasestorage.app/noimage.jpg";
 
@@ -43,7 +44,6 @@ function Events() {
     duration: "",
     language: "",
     acceptsRSVP: false,
-    featuredImage: "",
     maxParticipants: "",
     privacy: "public",
     format: "",
@@ -51,13 +51,43 @@ function Events() {
     status: "active", // new dropdown field with default "active"
   });
 
-  // Handle changes for all input fields
+  // New state for the file upload
+  const [imageFile, setImageFile] = useState(null);
+
+  // Handle changes for text, number, and checkbox inputs
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+  };
+
+  // Handle file input change
+  const handleFileChange = (e) => {
+    if (e.target.files[0]) {
+      setImageFile(e.target.files[0]);
+    }
+  };
+
+  // Helper function to upload the image file to Firebase Storage and return its download URL
+  const uploadImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const storage = getStorage();
+      // Create a storage reference under a folder "events" with the file name
+      const storageRef = ref(storage, `events/${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      uploadTask.on(
+        "state_changed",
+        null,
+        (error) => reject(error),
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref)
+            .then((url) => resolve(url))
+            .catch((err) => reject(err));
+        }
+      );
+    });
   };
 
   // Handle form submission and add a new event document to Firestore
@@ -70,18 +100,27 @@ function Events() {
       return;
     }
 
-    // Convert startDate and endDate from string to Date object
+    // Convert startDate and endDate from string to Date objects
     const startDateTimestamp = formData.startDate ? new Date(formData.startDate) : null;
     const endDateTimestamp = formData.endDate ? new Date(formData.endDate) : null;
 
+    // Determine the featured image URL: if a file is selected, upload it; otherwise use default image
+    let featuredImageUrl = DEFAULT_IMAGE;
+    if (imageFile) {
+      try {
+        featuredImageUrl = await uploadImage(imageFile);
+      } catch (err) {
+        console.error("Error uploading image:", err);
+        toast.error("Image upload failed. Using default image.");
+        featuredImageUrl = DEFAULT_IMAGE;
+      }
+    }
+
     // Prepare new event data with additional fields:
-    // - Use default image if none provided.
-    // - Add invitedUsers and participants as empty arrays.
-    // - Include status field.
     const newEventData = {
       ...formData,
       category: formData.category.split(",").map((cat) => cat.trim()),
-      featuredImage: formData.featuredImage ? formData.featuredImage : DEFAULT_IMAGE,
+      featuredImage: featuredImageUrl,
       organizers: [user.uid],
       creatorId: user.uid,
       invitedUsers: [],
@@ -357,18 +396,17 @@ function Events() {
                 </label>
               </div>
 
-              {/* Featured Image URL (Optional) */}
+              {/* Upload Featured Image */}
               <div className="mb-4">
-                <label htmlFor="featuredImage" className="block text-sm font-medium mb-1">
-                  Featured Image URL (optional)
+                <label htmlFor="featuredImageFile" className="block text-sm font-medium mb-1">
+                  Upload Featured Image
                 </label>
                 <input
-                  type="text"
-                  id="featuredImage"
-                  name="featuredImage"
-                  value={formData.featuredImage}
-                  onChange={handleChange}
-                  className="w-full border rounded p-2"
+                  type="file"
+                  id="featuredImageFile"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="w-full"
                 />
               </div>
 
