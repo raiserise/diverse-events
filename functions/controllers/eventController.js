@@ -104,18 +104,6 @@ const getEventDetails = async (req, res) => {
   try {
     const eventId = req.params.eventId;
     const event = await eventModel.getEventById(eventId);
-
-    if (event.privacy === "private") {
-      // Check if user is authenticated
-      if (!req.user) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-      // Check organizer access
-      if (!event.organizers.includes(req.user.user_id)) {
-        return res.status(403).json({ error: "Not authorized" });
-      }
-    }
-
     res.status(200).json(event);
   } catch (error) {
     res.status(500).json({ error: error.message });
