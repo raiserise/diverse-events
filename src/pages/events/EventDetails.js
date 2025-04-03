@@ -1,12 +1,24 @@
 // src/pages/events/EventDetails.js
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getDataById, addData } from "../../api/apiService";
+import { getDataById, addData, patchData } from "../../api/apiService";
 import FirebaseImage from "../../components/FirebaseImage";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { getFirestore, updateDoc, doc, serverTimestamp } from "firebase/firestore";
+import {
+  getFirestore,
+  updateDoc,
+  doc,
+  serverTimestamp,
+} from "firebase/firestore";
+import EditEventsDetailModal from "./EditEventsDetailModal";
+import {
+  getStorage,
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+} from "firebase/storage";
 
 function EventDetails() {
   const { id } = useParams();
@@ -18,10 +30,22 @@ function EventDetails() {
   const [submitting, setSubmitting] = useState(false);
   const auth = getAuth();
   const [user, setUser] = useState(null);
+  const [participants, setParticipants] = useState([]);
+  const [cooldownRemaining, setCooldownRemaining] = useState(null);
+
+  // New state for the image file in edit mode
+  const [editImageFile, setEditImageFile] = useState(null);
 
   // State for the edit modal and its form data
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState(null);
+
+  const parseFirestoreTimestamp = (timestamp) => {
+    if (timestamp?._seconds) {
+      return timestamp._seconds * 1000; // Convert seconds to milliseconds
+    }
+    return 0;
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -49,7 +73,11 @@ function EventDetails() {
           return;
         }
         // Privacy Check: If the event is private, ensure the user is allowed to view it.
-        if (user && eventData.privacy === "private") {
+        if (eventData.privacy === "private") {
+          if (!user) {
+            setError("Authentication required to view this private event.");
+            return;
+          }
           const allowed =
             (eventData.organizers || []).includes(user.uid) ||
             (eventData.invitedUsers || []).includes(user.uid);
@@ -58,14 +86,48 @@ function EventDetails() {
             return;
           }
         }
+
+        // Fetch participants' names if there are participants
+        let participants = [];
+        if (eventData.participants?.length) {
+          participants = await Promise.all(
+            eventData.participants.map(async (participantId) => {
+              try {
+                const userDoc = await getDataById(
+                  "/users",
+                  participantId,
+                  false
+                );
+                console.log(userDoc);
+                return { id: participantId, name: userDoc?.name || "Unknown" };
+              } catch (err) {
+                console.log("Failed to fetch participant:", err);
+                return { id: participantId, name: "Unknown" };
+              }
+            })
+          );
+        }
+
         // Inject the event ID into the event object
-        setEvent({ id, ...eventData });
+        setEvent({ id, participants, ...eventData });
         // Fetch organizers if available
         if (eventData.organizers?.length) {
           const orgs = await Promise.all(
-            eventData.organizers.map((orgId) => getDataById("/users", orgId, true))
+            eventData.organizers.map((orgId) =>
+              getDataById("/users", orgId, true)
+            )
           );
           setOrganizers(orgs);
+        }
+
+        // Fetch participants if available
+        if (eventData.participants?.length) {
+          const participants = await Promise.all(
+            eventData.participants.map((participantId) =>
+              getDataById("/users", participantId, true)
+            )
+          );
+          setParticipants(participants);
         }
       } catch (err) {
         setError("Error loading event details");
@@ -77,7 +139,41 @@ function EventDetails() {
     const checkRSVP = async () => {
       try {
         const response = await getDataById("/rsvp/check", id, true);
-        setIsRSVP(response.exists);
+
+        if (response.exists && response.status === "cancelled") {
+          console.log("RSVP exists?", response);
+
+          // Parse Firestore timestamp
+          const lastCancelledAt = parseFirestoreTimestamp(
+            response.lastCancelledAt
+          );
+
+          const cooldownOver = Date.now() - lastCancelledAt >= 30 * 60 * 1000; // 30 min cooldown
+
+          // Check RSVP status
+          if (response.status === "cancelled") {
+            if (!cooldownOver) {
+              setIsRSVP(true);
+              const remainingTime = Math.ceil(
+                (30 * 60 * 1000 - (Date.now() - lastCancelledAt)) / 1000
+              );
+              setCooldownRemaining(remainingTime);
+              console.log("Cooldown remaining (seconds):", remainingTime);
+              return;
+            } else {
+              // Cooldown is over, allow RSVP again
+              setIsRSVP(false);
+              return;
+            }
+          }
+          // If the RSVP is not cancelled, directly allow RSVP
+          //setIsRSVP(true);
+        } else if (response.exists) {
+          setIsRSVP(true);
+        } else {
+          setIsRSVP(false);
+        }
+
         console.log("RSVP check successful:", response);
       } catch (error) {
         console.error("RSVP check failed:", error);
@@ -88,27 +184,85 @@ function EventDetails() {
     if (user) checkRSVP();
   }, [user, id]);
 
+  useEffect(() => {
+    let interval;
+
+    if (cooldownRemaining > 0) {
+      interval = setInterval(() => {
+        setCooldownRemaining((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => clearInterval(interval);
+  }, [cooldownRemaining]);
+
   // Handle RSVP submission
   const handleRSVP = async () => {
-    if (!event) return;
+    if (!event || isRSVP || submitting) return;
+
     try {
       setSubmitting(true);
-      await addData(
-        "/rsvp",
-        {
-          eventId: event.id,
-          dietaryRequirements: "",
-        },
-        true
-      );
-      setIsRSVP(true);
-      toast.success("RSVP successful!");
+
+      // Check if RSVP exists
+      const response = await getDataById("/rsvp/check", id, true);
+
+      if (response.exists) {
+        console.log("rsvpexist?", response);
+        const { status, lastCancelledAt } = response;
+
+        // Handle canceled RSVP with cooldown check
+        if (status === "cancelled") {
+          const lastCancelledTime = parseFirestoreTimestamp(lastCancelledAt);
+          const cooldownDuration = 30 * 60 * 1000;
+
+          if (Date.now() - lastCancelledTime < cooldownDuration) {
+            const remainingTime = Math.ceil(
+              (cooldownDuration - (Date.now() - lastCancelledTime)) / 60000
+            );
+            toast.error(`You can RSVP again in ${remainingTime} minutes.`);
+            setSubmitting(false);
+            return;
+          }
+        }
+
+        // If RSVP exists and is not canceled or cooldown is over, update it
+        await patchData(
+          `/rsvp/${response.rsvpId}/status`,
+          { status: "pending" },
+          true
+        ); // Correct endpoint
+        setIsRSVP(true);
+        toast.success("RSVP updated successfully!");
+      } else {
+        // Create a new RSVP if none exists
+        await addData(
+          "/rsvp",
+          {
+            eventId: event.id,
+            organizers: event.organizers,
+            dietaryRequirements: "",
+            createdAt: new Date(),
+          },
+          true
+        );
+        setIsRSVP(true);
+        toast.success("RSVP created successfully!");
+      }
     } catch (error) {
+      console.error("RSVP error:", error);
       toast.error("RSVP failed. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
+
+  const canRSVP = !isRSVP && !submitting && cooldownRemaining <= 0;
 
   // Handler for showing the edit modal (populates edit form data)
   const handleEditClick = () => {
@@ -135,16 +289,44 @@ function EventDetails() {
       terms: event.terms || "",
       status: event.status || "active",
     });
+    // Clear any previously selected file
+    setEditImageFile(null);
     setIsEditModalOpen(true);
   };
 
-  // Handler for changes in the edit form
+  // Handler for changes in the edit form (for text, number, checkbox fields)
   const handleEditChange = (e) => {
     const { name, value, type, checked } = e.target;
     setEditFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+  };
+
+  // New handler for file input change in the edit modal
+  const handleEditFileChange = (e) => {
+    if (e.target.files[0]) {
+      setEditImageFile(e.target.files[0]);
+    }
+  };
+
+  // Helper function to upload an image file to Firebase Storage
+  const uploadImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const storage = getStorage();
+      const storageRef = ref(storage, `events/${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      uploadTask.on(
+        "state_changed",
+        null,
+        (error) => reject(error),
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref)
+            .then((url) => resolve(url))
+            .catch((err) => reject(err));
+        }
+      );
+    });
   };
 
   // Handler for submitting the edit form
@@ -154,9 +336,24 @@ function EventDetails() {
       toast.error("You must be logged in to edit an event.");
       return;
     }
-    // Convert the datetime-local strings to Date objects so Firestore stores them as timestamps
-    const updatedStartDate = editFormData.startDate ? new Date(editFormData.startDate) : null;
-    const updatedEndDate = editFormData.endDate ? new Date(editFormData.endDate) : null;
+    // Convert datetime-local strings to Date objects so Firestore stores them as timestamps
+    const updatedStartDate = editFormData.startDate
+      ? new Date(editFormData.startDate)
+      : null;
+    const updatedEndDate = editFormData.endDate
+      ? new Date(editFormData.endDate)
+      : null;
+
+    // If a new image file was selected, upload it first
+    let newFeaturedImage = editFormData.featuredImage;
+    if (editImageFile) {
+      try {
+        newFeaturedImage = await uploadImage(editImageFile);
+      } catch (err) {
+        console.error("Error uploading image:", err);
+        toast.error("Image upload failed. Using previous image.");
+      }
+    }
 
     // Prepare updated data (convert category to array)
     const updatedData = {
@@ -165,6 +362,7 @@ function EventDetails() {
       updatedAt: serverTimestamp(),
       startDate: updatedStartDate,
       endDate: updatedEndDate,
+      featuredImage: newFeaturedImage,
     };
 
     const db = getFirestore();
@@ -172,6 +370,7 @@ function EventDetails() {
       await updateDoc(doc(db, "events", event.id), updatedData);
       toast.success("Event updated successfully!");
       setIsEditModalOpen(false);
+
       window.location.reload();
     } catch (error) {
       console.error("Error updating event:", error);
@@ -312,11 +511,14 @@ function EventDetails() {
             <p>
               <strong className="text-gray-900">Start Date:</strong>{" "}
               {event.startDate?._seconds
-                ? new Date(event.startDate._seconds * 1000).toLocaleString("en-US", {
-                    timeZone: "Asia/Shanghai",
-                    dateStyle: "medium",
-                    timeStyle: "medium",
-                  })
+                ? new Date(event.startDate._seconds * 1000).toLocaleString(
+                    "en-US",
+                    {
+                      timeZone: "Asia/Shanghai",
+                      dateStyle: "medium",
+                      timeStyle: "medium",
+                    }
+                  )
                 : "N/A"}
             </p>
             <p>
@@ -374,42 +576,68 @@ function EventDetails() {
       </div>
 
       {/* Participants Section */}
-      {event.participants?.length > 0 && (
-        <div className="mb-8">
+      {participants.length > 0 ? (
+        <ul className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {participants.map((participant) => (
+            <li
+              key={participant.id}
+              className="bg-gray-100 p-4 rounded-lg text-center hover:bg-gray-200 transition"
+            >
+              <p className="font-medium text-gray-700">
+                {participant.name !== "Unknown"
+                  ? participant.name
+                  : "Name not available"}
+              </p>
+              <p className="text-sm text-gray-600">Confirmed</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div>
           <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            Participants ({event.participants.length})
+            No Participants Yet
           </h3>
-          <ul className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {event.participants.map((participantId) => (
-              <li
-                key={participantId}
-                className="bg-gray-100 p-4 rounded-lg text-center"
-              >
-                <p className="font-medium">User {participantId.slice(0, 6)}</p>
-                <p className="text-sm text-gray-600">Confirmed</p>
-              </li>
-            ))}
-          </ul>
         </div>
       )}
 
       {/* RSVP Section */}
       {event.acceptsRSVP && (
-        <div className="fixed md:relative bottom-0 left-0 right-0 md:mb-8 bg-white md:bg-transparent p-4 md:p-0">
+        <div className="fixed md:relative bottom-0 left-0 right-0 md:mb-8 bg-white md:bg-transparent p-4 md:p-0 md:mt-8">
           {organizers.some((org) => org.id === user?.uid) ? (
             <p className="text-yellow-600 text-center py-3">
               Organizers cannot RSVP to their own events
             </p>
           ) : (
-            <button
-              onClick={handleRSVP}
-              disabled={submitting || isRSVP}
-              className={`w-full px-6 py-3 rounded-lg transition duration-200 ${
-                isRSVP ? "bg-green-500 cursor-default" : "bg-blue-600 hover:bg-blue-700"
-              }`}
-            >
-              {submitting ? "Submitting..." : isRSVP ? "RSVP Confirmed" : "RSVP Now"}
-            </button>
+            <>
+              <button
+                onClick={handleRSVP}
+                disabled={submitting || (!canRSVP && !isRSVP)} // Disable only during submission or cooldown (if not RSVP'd)
+                className={`w-full px-6 py-3 rounded-lg transition duration-200 ${
+                  isRSVP // Check RSVP status FIRST
+                    ? "bg-green-500 cursor-default"
+                    : canRSVP
+                      ? "bg-blue-600 hover:bg-blue-700"
+                      : "bg-gray-400 cursor-not-allowed"
+                }`}
+              >
+                {submitting
+                  ? "Submitting..."
+                  : isRSVP // Check RSVP status first
+                    ? "RSVP Confirmed"
+                    : canRSVP
+                      ? "RSVP Now"
+                      : `You can RSVP again in ${Math.floor(cooldownRemaining / 60)}m ${cooldownRemaining % 60}s`}
+              </button>
+
+              {!canRSVP &&
+                cooldownRemaining > 0 &&
+                isRSVP && ( // Only show cooldown message if not RSVP'd
+                  <p className="text-red-500 text-center text-sm mt-2">
+                    You can RSVP again in {Math.floor(cooldownRemaining / 60)}m
+                    {cooldownRemaining % 60}s
+                  </p>
+                )}
+            </>
           )}
         </div>
       )}
@@ -425,275 +653,14 @@ function EventDetails() {
       )}
 
       {/* Edit Modal for Organizers */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-[800px] overflow-y-auto max-h-full">
-            <h2 className="text-lg font-bold mb-4">Edit Event</h2>
-            {editFormData && (
-              <form onSubmit={handleEditSubmit}>
-                {/* Title */}
-                <div className="mb-4">
-                  <label htmlFor="editTitle" className="block text-sm font-medium mb-1">
-                    Title <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="editTitle"
-                    name="title"
-                    value={editFormData.title}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                    required
-                  />
-                </div>
-
-                {/* Description */}
-                <div className="mb-4">
-                  <label htmlFor="editDescription" className="block text-sm font-medium mb-1">
-                    Description <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    id="editDescription"
-                    name="description"
-                    value={editFormData.description}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                    rows="3"
-                    required
-                  ></textarea>
-                </div>
-
-                {/* Category */}
-                <div className="mb-4">
-                  <label htmlFor="editCategory" className="block text-sm font-medium mb-1">
-                    Category (comma-separated) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="editCategory"
-                    name="category"
-                    value={editFormData.category}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                    required
-                  />
-                </div>
-
-                {/* Location */}
-                <div className="mb-4">
-                  <label htmlFor="editLocation" className="block text-sm font-medium mb-1">
-                    Location <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="editLocation"
-                    name="location"
-                    value={editFormData.location}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                    required
-                  />
-                </div>
-
-                {/* Start Date */}
-                <div className="mb-4">
-                  <label htmlFor="editStartDate" className="block text-sm font-medium mb-1">
-                    Start Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="datetime-local"
-                    id="editStartDate"
-                    name="startDate"
-                    value={editFormData.startDate}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                    required
-                  />
-                </div>
-
-                {/* End Date */}
-                <div className="mb-4">
-                  <label htmlFor="editEndDate" className="block text-sm font-medium mb-1">
-                    End Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="datetime-local"
-                    id="editEndDate"
-                    name="endDate"
-                    value={editFormData.endDate}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                    required
-                  />
-                </div>
-
-                {/* Duration */}
-                <div className="mb-4">
-                  <label htmlFor="editDuration" className="block text-sm font-medium mb-1">
-                    Duration (hours) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="editDuration"
-                    name="duration"
-                    value={editFormData.duration}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                    required
-                  />
-                </div>
-
-                {/* Language */}
-                <div className="mb-4">
-                  <label htmlFor="editLanguage" className="block text-sm font-medium mb-1">
-                    Language <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="editLanguage"
-                    name="language"
-                    value={editFormData.language}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                    required
-                  />
-                </div>
-
-                {/* Accepts RSVP */}
-                <div className="mb-4 flex items-center">
-                  <input
-                    type="checkbox"
-                    id="editAcceptsRSVP"
-                    name="acceptsRSVP"
-                    checked={editFormData.acceptsRSVP}
-                    onChange={handleEditChange}
-                    className="mr-2"
-                  />
-                  <label htmlFor="editAcceptsRSVP" className="text-sm font-medium">
-                    Accepts RSVP
-                  </label>
-                </div>
-
-                {/* Featured Image URL */}
-                <div className="mb-4">
-                  <label htmlFor="editFeaturedImage" className="block text-sm font-medium mb-1">
-                    Featured Image URL (optional)
-                  </label>
-                  <input
-                    type="text"
-                    id="editFeaturedImage"
-                    name="featuredImage"
-                    value={editFormData.featuredImage}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                  />
-                </div>
-
-                {/* Max Participants */}
-                <div className="mb-4">
-                  <label htmlFor="editMaxParticipants" className="block text-sm font-medium mb-1">
-                    Max Participants <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    id="editMaxParticipants"
-                    name="maxParticipants"
-                    value={editFormData.maxParticipants}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                    required
-                  />
-                </div>
-
-                {/* Privacy */}
-                <div className="mb-4">
-                  <label htmlFor="editPrivacy" className="block text-sm font-medium mb-1">
-                    Privacy <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="editPrivacy"
-                    name="privacy"
-                    value={editFormData.privacy}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                    required
-                  >
-                    <option value="public">Public</option>
-                    <option value="private">Private</option>
-                  </select>
-                </div>
-
-                {/* Format */}
-                <div className="mb-4">
-                  <label htmlFor="editFormat" className="block text-sm font-medium mb-1">
-                    Format <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="editFormat"
-                    name="format"
-                    value={editFormData.format}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                    required
-                  />
-                </div>
-
-                {/* Status */}
-                <div className="mb-4">
-                  <label htmlFor="editStatus" className="block text-sm font-medium mb-1">
-                    Status <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="editStatus"
-                    name="status"
-                    value={editFormData.status}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                    required
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-
-                {/* Terms */}
-                <div className="mb-4">
-                  <label htmlFor="editTerms" className="block text-sm font-medium mb-1">
-                    Terms & Conditions <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    id="editTerms"
-                    name="terms"
-                    value={editFormData.terms}
-                    onChange={handleEditChange}
-                    className="w-full border rounded p-2"
-                    rows="3"
-                    required
-                  ></textarea>
-                </div>
-
-                {/* Form Buttons */}
-                <div className="flex justify-between">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition"
-                  >
-                    Save Changes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditModalOpen(false)}
-                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
+      <EditEventsDetailModal
+        isEditModalOpen={isEditModalOpen}
+        setIsEditModalOpen={setIsEditModalOpen}
+        editFormData={editFormData}
+        handleEditSubmit={handleEditSubmit}
+        handleEditChange={handleEditChange}
+        handleEditFileChange={handleEditFileChange}
+      />
     </div>
   );
 }

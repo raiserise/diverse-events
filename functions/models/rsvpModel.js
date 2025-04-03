@@ -9,6 +9,7 @@ const createRSVP = async (eventId, userId, data) => {
     type: data.inviteId ? "invited" : "public",
     inviteId: data.inviteId || null,
     dietaryRequirements: data.dietaryRequirements || null,
+    organizers: data.organizers,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
@@ -40,12 +41,25 @@ const updateRSVP = async (rsvpId, userId, status) => {
 
   const rsvpData = rsvpDoc.data();
 
-  // Ensure only the person who RSVP'd can update their status
-  if (rsvpData.userId !== userId) {
-    throw new Error("Unauthorized to update this RSVP.");
+  const isOrganizer = rsvpData.organizers.includes(userId);
+  const isParticipant = rsvpData.userId === userId;
+
+  if (status === "cancelled" && !isParticipant) {
+    throw new Error(
+      "Unauthorized: Only the participant can cancel their RSVP."
+    );
   }
 
-  // Ensure the status is actually changing
+  // Allow participants to update to specific statuses
+  const allowedParticipantStatuses = ["pending"]; // Adjust as needed
+  if (
+    status !== "cancelled" &&
+    !isOrganizer &&
+    !(isParticipant && allowedParticipantStatuses.includes(status))
+  ) {
+    throw new Error("Unauthorized: Only organizers can update RSVP status.");
+  }
+
   if (rsvpData.status === status) {
     throw new Error("No change detected in RSVP status.");
   }
@@ -54,7 +68,6 @@ const updateRSVP = async (rsvpId, userId, status) => {
 
   return db.runTransaction(async (transaction) => {
     const eventDoc = await transaction.get(eventRef);
-
     if (!eventDoc.exists) {
       throw new Error("Event not found.");
     }
@@ -62,7 +75,25 @@ const updateRSVP = async (rsvpId, userId, status) => {
     const eventData = eventDoc.data();
     const participants = eventData.participants || [];
 
-    // If approving RSVP, check event capacity
+    const lastCancelledAt = rsvpData.lastCancelledAt?.toDate() || null;
+    const cooldownMinutes = 10;
+    const now = new Date();
+
+    if (status === "cancelled") {
+      transaction.update(rsvpRef, {
+        lastCancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      if (lastCancelledAt) {
+        const diffMinutes = (now - lastCancelledAt) / (1000 * 60);
+        if (diffMinutes < cooldownMinutes) {
+          throw new Error(
+            `You must wait ${cooldownMinutes - diffMinutes} minutes before RSVPing again.`
+          );
+        }
+      }
+    }
+
     if (status === "approved") {
       if (
         eventData.maxParticipants &&
@@ -70,22 +101,35 @@ const updateRSVP = async (rsvpId, userId, status) => {
       ) {
         throw new Error("Event is at full capacity.");
       }
-
-      // Add participant when RSVP is approved
       transaction.update(eventRef, {
-        participants: admin.firestore.FieldValue.arrayUnion(userId),
-      });
-    } else if (rsvpData.status === "approved" && status !== "approved") {
-      // If status is changing from approved to something else, remove participant
-      transaction.update(eventRef, {
-        participants: admin.firestore.FieldValue.arrayRemove(userId),
+        participants: admin.firestore.FieldValue.arrayUnion(rsvpData.userId),
       });
     }
 
-    // Update RSVP status
+    if (status === "cancelled") {
+      if (!["pending", "approved"].includes(rsvpData.status)) {
+        throw new Error("Cannot cancel a non-pending/approved RSVP.");
+      }
+      transaction.update(eventRef, {
+        participants: admin.firestore.FieldValue.arrayRemove(rsvpData.userId),
+      });
+    }
+
+    if (rsvpData.status === "approved" && status !== "approved") {
+      transaction.update(eventRef, {
+        participants: admin.firestore.FieldValue.arrayRemove(rsvpData.userId),
+      });
+    }
+
+    const shouldResetCreatedDate =
+      rsvpData.status === "cancelled" && status !== "cancelled";
+
     transaction.update(rsvpRef, {
-      status, // e.g., "approved", "declined"
+      status,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      ...(shouldResetCreatedDate && {
+        createdDate: admin.firestore.FieldValue.serverTimestamp(),
+      }),
     });
 
     return { id: rsvpId, status };
@@ -125,15 +169,13 @@ const getRSVPsByEvent = async (eventId) => {
 
 const findRSVP = async (eventId, userId) => {
   try {
-    // Use composite query with multiple where clauses <button class="citation-flag" data-index="3">
     const snapshot = await db
       .collection("rsvps")
       .where("eventId", "==", eventId)
       .where("userId", "==", userId)
-      .limit(1) // Optimize performance <button class="citation-flag" data-index="4">
+      .limit(1)
       .get();
 
-    // Return first matching document or null
     return snapshot.empty
       ? null
       : {
@@ -149,6 +191,23 @@ const countRSVPsByStatus = (rsvps, status) => {
   return rsvps.filter((rsvp) => rsvp.status === status).length;
 };
 
+const getUserRSVPs = async (userId) => {
+  try {
+    console.log(`Fetching RSVPs for user: ${userId}`);
+    const snapshot = await db
+      .collection("rsvps")
+      .where("userId", "==", userId)
+      .get();
+
+    if (snapshot.empty) {
+      console.log(`No RSVPs found for user: ${userId}`);
+    }
+
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    throw new Error(`Error fetching user RSVPs: ${error.message}`);
+  }
+};
 module.exports = {
   createRSVP,
   updateRSVP,
@@ -157,4 +216,5 @@ module.exports = {
   getRSVPsByEvent,
   countRSVPsByStatus,
   findRSVP,
+  getUserRSVPs,
 };
