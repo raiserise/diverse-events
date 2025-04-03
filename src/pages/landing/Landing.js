@@ -5,10 +5,16 @@ import Header from "../../components/Header";
 
 const Landing = () => {
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-gray-50 min-h-screen flex flex-col">
+      {/* Navbar */}
       <Navbar pageTitle="Diverse Events" />
+
+      {/* Header */}
       <Header />
-      <main className="p-8 max-w-7xl mx-auto">
+
+      {/* Main Content */}
+      <main className="p-8 max-w-7xl mx-auto flex-grow">
+        {/* Introduction Section */}
         <section className="my-12 text-center">
           <p className="mt-4 text-xl text-gray-700 leading-relaxed">
             <strong>DiverseEvents</strong> is a web-based event management
@@ -33,23 +39,37 @@ const Landing = () => {
           </p>
         </section>
 
-        <section className="my-12 text-center bg-blue-100 p-8 rounded-lg shadow-lg">
-          <h2 className="text-4xl font-bold text-gray-800">
+        {/* Call-to-Action Section */}
+        <section className="my-12 text-center bg-gradient-to-r from-blue-500 to-blue-700 p-10 rounded-lg shadow-lg text-white">
+          <h2 className="text-5xl font-bold mb-6">
             Get Started with DiverseEvents
           </h2>
-          <p className="mt-4 text-xl text-gray-700 leading-relaxed">
+          <p className="text-2xl leading-relaxed mb-8">
             Ready to make your event planning easier and more efficient? Join us
             today to experience the future of event management.
           </p>
-          <Link
-            to="/signup"
-            className="mt-8 inline-block bg-blue-600 text-white px-8 py-4 rounded-lg text-xl font-semibold transform hover:scale-105 transition-transform duration-300 shadow-md"
-          >
-            Get Started
-          </Link>
+          <div className="flex flex-col sm:flex-row justify-center gap-6">
+            <Link
+              to="/signup"
+              className="bg-white text-blue-600 px-10 py-4 rounded-lg text-xl font-semibold transform hover:scale-105 transition-transform duration-300 shadow-md"
+            >
+              Get Started
+            </Link>
+            <Link
+              to="/login"
+              className="bg-blue-600 border-2 border-white text-white px-10 py-4 rounded-lg text-xl font-semibold transform hover:scale-105 transition-transform duration-300 shadow-md"
+            >
+              Log In
+            </Link>
+          </div>
+          <p className="mt-8 text-lg leading-relaxed">
+            Already have an account? Log in to access your events and start
+            planning.
+          </p>
         </section>
       </main>
 
+      {/* Footer */}
       <footer className="bg-blue-600 text-white p-4 text-center">
         <p className="text-sm">
           &copy; 2025 DiverseEvents. All Rights Reserved.
