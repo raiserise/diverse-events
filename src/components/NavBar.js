@@ -1,81 +1,70 @@
-import React, { useState, useEffect } from "react";
-import { Avatar, Menu, MenuItem } from "@mui/material";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthProvider";
-import { db } from "../firebase";
-import { doc, getDoc } from "firebase/firestore";
+// src/components/NavBar.js
+import React, { useEffect, useState } from "react";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 const Navbar = ({ pageTitle }) => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [userData, setUserData] = useState({ name: "", role: "" });
+  const [navBarData, setNavBarData] = useState([]);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (user) {
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          setUserData({
-            name: userSnap.data().name || "User",
-            role: userSnap.data().role || "User",
-          });
-        }
-      }
-    };
+    const auth = getAuth();
+    onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    });
+  }, []);
 
-    fetchUserData();
+  // const handleSignOut = () => {
+  //   const auth = getAuth();
+  //   signOut(auth)
+  //     .then(() => {
+  //       setUser(null);
+  //       // Consider setting toast to show that user has signed out
+  //     })
+  //     .catch((error) => {
+  //       console.error("Error signing out: ", error);
+  //     });
+  // };
+
+  useEffect(() => {
+    setNavBarData([
+      // {
+      //   title: "Dashboard",
+      //   link: "/dashboard",
+      //   show: user ? true : false,
+      // },
+      // {
+      //   title: user ? "Signout" : "Login",
+      //   link: user ? "/" : "/login",
+      //   show: true,
+      //   onclick: user ? handleSignOut : null,
+      // },
+      // {
+      //   title: "Signup",
+      //   link: "/signup",
+      //   show: user ? false : true,
+      // },
+    ]);
   }, [user]);
 
-  const handleAvatarClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-    handleMenuClose();
-  };
-
   return (
-    <div className="flex items-center justify-between p-4">
-      {/* PAGE TITLE */}
-      <div className="text-lg font-bold">{pageTitle}</div>
-
-      {/* RIGHT SECTION: USER INFO */}
-      <div className="flex items-center gap-6">
-        {user && (
-          <>
-            <div className="flex flex-col">
-              <span className="text-s leading-3 font-medium">
-                {userData.name}
-              </span>
-              <span className="text-xs text-gray-500 text-right">
-                {userData.role.charAt(0).toUpperCase() + userData.role.slice(1)}
-              </span>
-            </div>
-            <Avatar
-              className="bg-black cursor-pointer"
-              onClick={handleAvatarClick}
-            >
-              {userData.name ? userData.name.charAt(0).toUpperCase() : "U"}
-            </Avatar>
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleMenuClose}
-            >
-              <MenuItem onClick={handleLogout}>Logout</MenuItem>
-            </Menu>
-          </>
-        )}
+    <nav className="bg-gray-800 text-white p-4">
+      <div className="container mx-auto flex justify-between items-center">
+        <h1 className="text-2xl font-bold">{pageTitle}</h1>
+        <ul className="flex gap-4">
+          {navBarData.map((item, index) => {
+            return (
+              <li key={index}>
+                {item.show && (
+                  <a href={item.link} className="hover:underline">
+                    {item.title}
+                  </a>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       </div>
-    </div>
+    </nav>
   );
 };
 
