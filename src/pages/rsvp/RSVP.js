@@ -58,7 +58,7 @@ const RSVP = () => {
       const fetchUserDetails = async (userId) => {
         try {
           const userData = await getDataById("/users", userId, true);
-          console.log("hasdai", userData);
+          console.log("userData:", userData);
           return userData || { name: "Unknown User", email: "Unknown Email" };
         } catch (error) {
           console.error(

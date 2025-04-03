@@ -147,10 +147,8 @@ function EventDetails() {
           const lastCancelledAt = parseFirestoreTimestamp(
             response.lastCancelledAt
           );
-          console.log("lastCancelledAt timestamp:", lastCancelledAt);
 
           const cooldownOver = Date.now() - lastCancelledAt >= 30 * 60 * 1000; // 30 min cooldown
-          console.log("cooldownOver?", cooldownOver);
 
           // Check RSVP status
           if (response.status === "cancelled") {
@@ -171,7 +169,6 @@ function EventDetails() {
           // If the RSVP is not cancelled, directly allow RSVP
           //setIsRSVP(true);
         } else if (response.exists) {
-          console.log("setting here?");
           setIsRSVP(true);
         } else {
           setIsRSVP(false);
@@ -216,7 +213,7 @@ function EventDetails() {
       const response = await getDataById("/rsvp/check", id, true);
 
       if (response.exists) {
-        console.log("rsvpeixts?", response);
+        console.log("rsvpexist?", response);
         const { status, lastCancelledAt } = response;
 
         // Handle canceled RSVP with cooldown check
