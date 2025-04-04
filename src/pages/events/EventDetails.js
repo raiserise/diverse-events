@@ -45,6 +45,7 @@ function EventDetails() {
 
   // Fetch event data with authentication
   useEffect(() => {
+    if (!user) return; // Wait until the auth state is determined
     const fetchEvent = async () => {
       try {
         let eventData;
