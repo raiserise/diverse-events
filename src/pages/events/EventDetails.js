@@ -9,6 +9,8 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 import EventModal from "../../components/EventModal";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import CustomModal from "../../components/CustomModal";
+import { getAllData } from "../../api/apiService";
 
 function EventDetails() {
   const { id } = useParams();
@@ -22,6 +24,10 @@ function EventDetails() {
   const [user, setUser] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [cooldownRemaining, setCooldownRemaining] = useState(null);
+  const [privacy, setPrivacy] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [invitedUsers, setInvitedUsers] = useState(null);
 
   // State for the edit modal and its form data
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -35,6 +41,15 @@ function EventDetails() {
     }
     return 0;
   };
+
+  useEffect(() => {
+    // Fetch users when invite modal is opened
+    if (isInviteOpen) {
+      getAllData("/users", false)
+        .then((data) => setUsers(data || []))
+        .catch((error) => console.error("Error fetching users:", error));
+    }
+  }, [isInviteOpen]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -67,6 +82,8 @@ function EventDetails() {
             setError("Authentication required to view this private event.");
             return;
           }
+          setPrivacy(eventData.privacy);
+          setInvitedUsers(eventData.invitedUsers);
           const allowed =
             (eventData.organizers || []).includes(user.uid) ||
             (eventData.invitedUsers || []).includes(user.uid);
@@ -542,17 +559,53 @@ function EventDetails() {
           )}
         </div>
       )}
+      {/* Button Container */}
+      <div className="fixed bottom-6 right-6 flex gap-4">
+      {/* Invite Button for Organizers */}
+      {privacy === "private" &&
+        organizers.some((org) => org.id === user?.uid) && (
+          <button
+            onClick={() => setIsInviteOpen(true)}
+            className="bg-purple-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-purple-600 transition"
+          >
+            Invite Users
+          </button>
+        )}
 
       {/* Edit Button for Organizers */}
       {organizers.some((org) => org.id === user?.uid) && (
         <button
           onClick={handleEditClick}
-          className="fixed bottom-6 right-6 bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg flex items-center justify-center hover:bg-orange-600 transition"
+          className="bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-orange-600 transition"
         >
           Edit Event
         </button>
       )}
-
+    </div>
+      {/* Invite Users Modal */}
+      <CustomModal isOpen={isInviteOpen} onRequestClose={() => setIsInviteOpen(false)}>
+      <h2 className="text-lg font-bold">Invite Users</h2>
+      <ul>
+        {users.map((u) => (
+          <li key={u.id} className="flex justify-between items-center p-2 border-b">
+            {u.name} ({u.email})
+            {invitedUsers.includes(u.id) ? (
+              <span className="text-green-500 font-semibold">Invited</span>
+            ) : (
+              <button
+                className="bg-blue-500 text-white px-4 py-3 rounded hover:bg-blue-600"
+                onClick={() => {
+                  setInvitedUsers((prevUsers) => [...prevUsers, u.id]);
+                  console.log(`Inviting ${u.email}`);
+                }}
+              >
+                Invite
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </CustomModal>
       {/* Shared Modal for Adding/Editing */}
       {isEditModalOpen && (
         <EventModal
