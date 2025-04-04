@@ -1,6 +1,82 @@
 // src/components/EventModal.js
 import React from "react";
 
+// A helper component for selecting multiple categories
+const CategorySelect = ({ value, onChange }) => {
+  const options = [
+    "Business",
+    "Conference",
+    "Festivals",
+    "Gatherings",
+    "Parties",
+    "Performances",
+    "Personal",
+    "Seminars",
+    "Social",
+    "Sports",
+    "Techology",
+    "Weddings",
+    "Workshops",
+  ];
+
+  // Convert the current value (a comma-separated string) to an array
+  const selected = value
+    ? value.split(",").map((item) => item.trim()).filter((item) => item)
+    : [];
+
+  const handleSelectChange = (e) => {
+    const selectedOption = e.target.value;
+    if (selectedOption && !selected.includes(selectedOption)) {
+      const newSelected = [...selected, selectedOption];
+      onChange({
+        target: { name: "category", value: newSelected.join(", ") },
+      });
+    }
+    // Reset the select (so the default option shows)
+    e.target.selectedIndex = 0;
+  };
+
+  const handleRemove = (optionToRemove) => {
+    const newSelected = selected.filter((opt) => opt !== optionToRemove);
+    onChange({
+      target: { name: "category", value: newSelected.join(", ") },
+    });
+  };
+
+  return (
+    <div>
+      <select
+        onChange={handleSelectChange}
+        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+      >
+        <option value="">Select a category</option>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+      <div className="mt-2">
+        {selected.map((opt) => (
+          <span
+            key={opt}
+            className="inline-block bg-blue-200 text-blue-800 px-2 py-1 rounded mr-2 mb-2"
+          >
+            {opt}
+            <button
+              type="button"
+              onClick={() => handleRemove(opt)}
+              className="ml-1 text-red-500"
+            >
+              &times;
+            </button>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const EventModal = ({
   isOpen,
   onClose,
@@ -11,7 +87,7 @@ const EventModal = ({
   onSubmit,
 }) => {
   if (!isOpen) return null;
-  
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white p-6 rounded-lg shadow-lg w-[800px] overflow-y-auto max-h-full">
@@ -20,7 +96,10 @@ const EventModal = ({
           <div className="grid grid-cols-2 gap-4">
             {/* Title */}
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="title"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Title <span className="text-red-500">*</span>
               </label>
               <input
@@ -35,7 +114,10 @@ const EventModal = ({
             </div>
             {/* Description */}
             <div className="col-span-2">
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="description"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Description <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -48,24 +130,22 @@ const EventModal = ({
                 required
               ></textarea>
             </div>
-            {/* Category */}
+            {/* Category as multi-select dropdown */}
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-                Category (comma-separated) <span className="text-red-500">*</span>
+              <label
+                htmlFor="category"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Category <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                name="category"
-                id="category"
-                value={formData.category}
-                onChange={onChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                required
-              />
+              <CategorySelect value={formData.category} onChange={onChange} />
             </div>
             {/* Location */}
             <div>
-              <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="location"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Location <span className="text-red-500">*</span>
               </label>
               <input
@@ -80,7 +160,10 @@ const EventModal = ({
             </div>
             {/* Start Date */}
             <div>
-              <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="startDate"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Start Date <span className="text-red-500">*</span>
               </label>
               <input
@@ -95,7 +178,10 @@ const EventModal = ({
             </div>
             {/* End Date */}
             <div>
-              <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="endDate"
+                className="block text-sm font-medium text-gray-700"
+              >
                 End Date <span className="text-red-500">*</span>
               </label>
               <input
@@ -110,11 +196,14 @@ const EventModal = ({
             </div>
             {/* Duration */}
             <div>
-              <label htmlFor="duration" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="duration"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Duration (hours) <span className="text-red-500">*</span>
               </label>
               <input
-                type="text"
+                type="number"
                 name="duration"
                 id="duration"
                 value={formData.duration}
@@ -125,7 +214,10 @@ const EventModal = ({
             </div>
             {/* Language */}
             <div>
-              <label htmlFor="language" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="language"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Language <span className="text-red-500">*</span>
               </label>
               <input
@@ -148,13 +240,19 @@ const EventModal = ({
                 onChange={onChange}
                 className="mr-2"
               />
-              <label htmlFor="acceptsRSVP" className="text-sm font-medium text-gray-700">
+              <label
+                htmlFor="acceptsRSVP"
+                className="text-sm font-medium text-gray-700"
+              >
                 Accepts RSVP
               </label>
             </div>
             {/* File Upload for Featured Image */}
             <div className="col-span-2">
-              <label htmlFor="featuredImageFile" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="featuredImageFile"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Upload Featured Image (optional)
               </label>
               <input
@@ -168,7 +266,10 @@ const EventModal = ({
             </div>
             {/* Max Participants */}
             <div>
-              <label htmlFor="maxParticipants" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="maxParticipants"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Max Participants <span className="text-red-500">*</span>
               </label>
               <input
@@ -183,7 +284,10 @@ const EventModal = ({
             </div>
             {/* Privacy */}
             <div>
-              <label htmlFor="privacy" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="privacy"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Privacy <span className="text-red-500">*</span>
               </label>
               <select
@@ -200,7 +304,10 @@ const EventModal = ({
             </div>
             {/* Format */}
             <div>
-              <label htmlFor="format" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="format"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Format <span className="text-red-500">*</span>
               </label>
               <input
@@ -215,7 +322,10 @@ const EventModal = ({
             </div>
             {/* Status */}
             <div>
-              <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="status"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Status <span className="text-red-500">*</span>
               </label>
               <select
@@ -232,7 +342,10 @@ const EventModal = ({
             </div>
             {/* Terms */}
             <div className="col-span-2">
-              <label htmlFor="terms" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="terms"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Terms & Conditions <span className="text-red-500">*</span>
               </label>
               <textarea
