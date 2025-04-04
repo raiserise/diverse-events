@@ -6,19 +6,9 @@ import FirebaseImage from "../../components/FirebaseImage";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import {
-  getFirestore,
-  updateDoc,
-  doc,
-  serverTimestamp,
-} from "firebase/firestore";
-import EditEventsDetailModal from "./EditEventsDetailModal";
-import {
-  getStorage,
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from "firebase/storage";
+import { getFirestore, updateDoc, doc, serverTimestamp } from "firebase/firestore";
+import EventModal from "../../components/EventModal";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 function EventDetails() {
   const { id } = useParams();
@@ -33,16 +23,15 @@ function EventDetails() {
   const [participants, setParticipants] = useState([]);
   const [cooldownRemaining, setCooldownRemaining] = useState(null);
 
-  // New state for the image file in edit mode
-  const [editImageFile, setEditImageFile] = useState(null);
-
   // State for the edit modal and its form data
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState(null);
+  // New state for image file in edit mode
+  const [editImageFile, setEditImageFile] = useState(null);
 
   const parseFirestoreTimestamp = (timestamp) => {
     if (timestamp?._seconds) {
-      return timestamp._seconds * 1000; // Convert seconds to milliseconds
+      return timestamp._seconds * 1000;
     }
     return 0;
   };
@@ -72,7 +61,6 @@ function EventDetails() {
           setError("Event not found.");
           return;
         }
-        // Privacy Check: If the event is private, ensure the user is allowed to view it.
         if (eventData.privacy === "private") {
           if (!user) {
             setError("Authentication required to view this private event.");
@@ -86,48 +74,18 @@ function EventDetails() {
             return;
           }
         }
-
-        // Fetch participants' names if there are participants
-        let participants = [];
-        if (eventData.participants?.length) {
-          participants = await Promise.all(
-            eventData.participants.map(async (participantId) => {
-              try {
-                const userDoc = await getDataById(
-                  "/users",
-                  participantId,
-                  false
-                );
-                console.log(userDoc);
-                return { id: participantId, name: userDoc?.name || "Unknown" };
-              } catch (err) {
-                console.log("Failed to fetch participant:", err);
-                return { id: participantId, name: "Unknown" };
-              }
-            })
-          );
-        }
-
-        // Inject the event ID into the event object
-        setEvent({ id, participants, ...eventData });
-        // Fetch organizers if available
+        setEvent({ id, ...eventData });
         if (eventData.organizers?.length) {
           const orgs = await Promise.all(
-            eventData.organizers.map((orgId) =>
-              getDataById("/users", orgId, true)
-            )
+            eventData.organizers.map((orgId) => getDataById("/users", orgId, true))
           );
           setOrganizers(orgs);
         }
-
-        // Fetch participants if available
         if (eventData.participants?.length) {
-          const participants = await Promise.all(
-            eventData.participants.map((participantId) =>
-              getDataById("/users", participantId, true)
-            )
+          const parts = await Promise.all(
+            eventData.participants.map((participantId) => getDataById("/users", participantId, true))
           );
-          setParticipants(participants);
+          setParticipants(parts);
         }
       } catch (err) {
         setError("Error loading event details");
@@ -139,42 +97,23 @@ function EventDetails() {
     const checkRSVP = async () => {
       try {
         const response = await getDataById("/rsvp/check", id, true);
-
         if (response.exists && response.status === "cancelled") {
-          console.log("RSVP exists?", response);
-
-          // Parse Firestore timestamp
-          const lastCancelledAt = parseFirestoreTimestamp(
-            response.lastCancelledAt
-          );
-
-          const cooldownOver = Date.now() - lastCancelledAt >= 30 * 60 * 1000; // 30 min cooldown
-
-          // Check RSVP status
-          if (response.status === "cancelled") {
-            if (!cooldownOver) {
-              setIsRSVP(true);
-              const remainingTime = Math.ceil(
-                (30 * 60 * 1000 - (Date.now() - lastCancelledAt)) / 1000
-              );
-              setCooldownRemaining(remainingTime);
-              console.log("Cooldown remaining (seconds):", remainingTime);
-              return;
-            } else {
-              // Cooldown is over, allow RSVP again
-              setIsRSVP(false);
-              return;
-            }
+          const lastCancelledAt = parseFirestoreTimestamp(response.lastCancelledAt);
+          const cooldownOver = Date.now() - lastCancelledAt >= 30 * 60 * 1000;
+          if (!cooldownOver) {
+            setIsRSVP(true);
+            const remainingTime = Math.ceil((30 * 60 * 1000 - (Date.now() - lastCancelledAt)) / 1000);
+            setCooldownRemaining(remainingTime);
+            return;
+          } else {
+            setIsRSVP(false);
+            return;
           }
-          // If the RSVP is not cancelled, directly allow RSVP
-          //setIsRSVP(true);
         } else if (response.exists) {
           setIsRSVP(true);
         } else {
           setIsRSVP(false);
         }
-
-        console.log("RSVP check successful:", response);
       } catch (error) {
         console.error("RSVP check failed:", error);
       }
@@ -186,7 +125,6 @@ function EventDetails() {
 
   useEffect(() => {
     let interval;
-
     if (cooldownRemaining > 0) {
       interval = setInterval(() => {
         setCooldownRemaining((prev) => {
@@ -198,49 +136,30 @@ function EventDetails() {
         });
       }, 1000);
     }
-
     return () => clearInterval(interval);
   }, [cooldownRemaining]);
 
-  // Handle RSVP submission
   const handleRSVP = async () => {
     if (!event || isRSVP || submitting) return;
-
     try {
       setSubmitting(true);
-
-      // Check if RSVP exists
       const response = await getDataById("/rsvp/check", id, true);
-
       if (response.exists) {
-        console.log("rsvpexist?", response);
         const { status, lastCancelledAt } = response;
-
-        // Handle canceled RSVP with cooldown check
         if (status === "cancelled") {
           const lastCancelledTime = parseFirestoreTimestamp(lastCancelledAt);
           const cooldownDuration = 30 * 60 * 1000;
-
           if (Date.now() - lastCancelledTime < cooldownDuration) {
-            const remainingTime = Math.ceil(
-              (cooldownDuration - (Date.now() - lastCancelledTime)) / 60000
-            );
+            const remainingTime = Math.ceil((cooldownDuration - (Date.now() - lastCancelledTime)) / 60000);
             toast.error(`You can RSVP again in ${remainingTime} minutes.`);
             setSubmitting(false);
             return;
           }
         }
-
-        // If RSVP exists and is not canceled or cooldown is over, update it
-        await patchData(
-          `/rsvp/${response.rsvpId}/status`,
-          { status: "pending" },
-          true
-        ); // Correct endpoint
+        await patchData(`/rsvp/${response.rsvpId}/status`, { status: "pending" }, true);
         setIsRSVP(true);
         toast.success("RSVP updated successfully!");
       } else {
-        // Create a new RSVP if none exists
         await addData(
           "/rsvp",
           {
@@ -264,7 +183,6 @@ function EventDetails() {
 
   const canRSVP = !isRSVP && !submitting && cooldownRemaining <= 0;
 
-  // Handler for showing the edit modal (populates edit form data)
   const handleEditClick = () => {
     setEditFormData({
       title: event.title || "",
@@ -289,12 +207,10 @@ function EventDetails() {
       terms: event.terms || "",
       status: event.status || "active",
     });
-    // Clear any previously selected file
     setEditImageFile(null);
     setIsEditModalOpen(true);
   };
 
-  // Handler for changes in the edit form (for text, number, checkbox fields)
   const handleEditChange = (e) => {
     const { name, value, type, checked } = e.target;
     setEditFormData((prev) => ({
@@ -303,14 +219,12 @@ function EventDetails() {
     }));
   };
 
-  // New handler for file input change in the edit modal
   const handleEditFileChange = (e) => {
     if (e.target.files[0]) {
       setEditImageFile(e.target.files[0]);
     }
   };
 
-  // Helper function to upload an image file to Firebase Storage
   const uploadImage = (file) => {
     return new Promise((resolve, reject) => {
       const storage = getStorage();
@@ -329,22 +243,14 @@ function EventDetails() {
     });
   };
 
-  // Handler for submitting the edit form
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
       toast.error("You must be logged in to edit an event.");
       return;
     }
-    // Convert datetime-local strings to Date objects so Firestore stores them as timestamps
-    const updatedStartDate = editFormData.startDate
-      ? new Date(editFormData.startDate)
-      : null;
-    const updatedEndDate = editFormData.endDate
-      ? new Date(editFormData.endDate)
-      : null;
-
-    // If a new image file was selected, upload it first
+    const updatedStartDate = editFormData.startDate ? new Date(editFormData.startDate) : null;
+    const updatedEndDate = editFormData.endDate ? new Date(editFormData.endDate) : null;
     let newFeaturedImage = editFormData.featuredImage;
     if (editImageFile) {
       try {
@@ -354,8 +260,6 @@ function EventDetails() {
         toast.error("Image upload failed. Using previous image.");
       }
     }
-
-    // Prepare updated data (convert category to array)
     const updatedData = {
       ...editFormData,
       category: editFormData.category.split(",").map((cat) => cat.trim()),
@@ -364,13 +268,11 @@ function EventDetails() {
       endDate: updatedEndDate,
       featuredImage: newFeaturedImage,
     };
-
     const db = getFirestore();
     try {
       await updateDoc(doc(db, "events", event.id), updatedData);
       toast.success("Event updated successfully!");
       setIsEditModalOpen(false);
-
       window.location.reload();
     } catch (error) {
       console.error("Error updating event:", error);
@@ -511,14 +413,11 @@ function EventDetails() {
             <p>
               <strong className="text-gray-900">Start Date:</strong>{" "}
               {event.startDate?._seconds
-                ? new Date(event.startDate._seconds * 1000).toLocaleString(
-                    "en-US",
-                    {
-                      timeZone: "Asia/Shanghai",
-                      dateStyle: "medium",
-                      timeStyle: "medium",
-                    }
-                  )
+                ? new Date(event.startDate._seconds * 1000).toLocaleString("en-US", {
+                    timeZone: "Asia/Shanghai",
+                    dateStyle: "medium",
+                    timeStyle: "medium",
+                  })
                 : "N/A"}
             </p>
             <p>
@@ -611,29 +510,30 @@ function EventDetails() {
             <>
               <button
                 onClick={handleRSVP}
-                disabled={submitting || (!canRSVP && !isRSVP)} // Disable only during submission or cooldown (if not RSVP'd)
+                disabled={submitting || (!canRSVP && !isRSVP)}
                 className={`w-full px-6 py-3 rounded-lg transition duration-200 ${
-                  isRSVP // Check RSVP status FIRST
+                  isRSVP
                     ? "bg-green-500 cursor-default"
                     : canRSVP
-                      ? "bg-blue-600 hover:bg-blue-700"
-                      : "bg-gray-400 cursor-not-allowed"
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-gray-400 cursor-not-allowed"
                 }`}
               >
                 {submitting
                   ? "Submitting..."
-                  : isRSVP // Check RSVP status first
-                    ? "RSVP Confirmed"
-                    : canRSVP
-                      ? "RSVP Now"
-                      : `You can RSVP again in ${Math.floor(cooldownRemaining / 60)}m ${cooldownRemaining % 60}s`}
+                  : isRSVP
+                  ? "RSVP Confirmed"
+                  : canRSVP
+                  ? "RSVP Now"
+                  : `You can RSVP again in ${Math.floor(cooldownRemaining / 60)}m ${
+                      cooldownRemaining % 60
+                    }s`}
               </button>
-
               {!canRSVP &&
                 cooldownRemaining > 0 &&
-                isRSVP && ( // Only show cooldown message if not RSVP'd
+                isRSVP && (
                   <p className="text-red-500 text-center text-sm mt-2">
-                    You can RSVP again in {Math.floor(cooldownRemaining / 60)}m
+                    You can RSVP again in {Math.floor(cooldownRemaining / 60)}m{" "}
                     {cooldownRemaining % 60}s
                   </p>
                 )}
@@ -642,7 +542,7 @@ function EventDetails() {
         </div>
       )}
 
-      {/* Edit Button for Organizers - now positioned at bottom right */}
+      {/* Edit Button for Organizers */}
       {organizers.some((org) => org.id === user?.uid) && (
         <button
           onClick={handleEditClick}
@@ -652,15 +552,18 @@ function EventDetails() {
         </button>
       )}
 
-      {/* Edit Modal for Organizers */}
-      <EditEventsDetailModal
-        isEditModalOpen={isEditModalOpen}
-        setIsEditModalOpen={setIsEditModalOpen}
-        editFormData={editFormData}
-        handleEditSubmit={handleEditSubmit}
-        handleEditChange={handleEditChange}
-        handleEditFileChange={handleEditFileChange}
-      />
+      {/* Shared Modal for Adding/Editing */}
+      {isEditModalOpen && (
+        <EventModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          modalTitle="Edit Event"
+          formData={editFormData}
+          onChange={handleEditChange}
+          onFileChange={handleEditFileChange}
+          onSubmit={handleEditSubmit}
+        />
+      )}
     </div>
   );
 }
