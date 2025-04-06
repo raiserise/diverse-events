@@ -23,7 +23,7 @@ const DashboardPage = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const data = await getAllData("/events", false);
+        const data = await getAllData("/events", true);
         setEvents(data);
       } catch (error) {
         setError(error.message);
@@ -64,33 +64,37 @@ const DashboardPage = () => {
             />
           </div>
 
-       {/* Upcoming Events */}
-<div className="bg-white border border-gray-300 rounded-lg p-4 shadow-md flex-1 min-w-[300px]">
-  <h2 className="text-xl mb-4">Upcoming Events</h2>
-  {loading ? (
-    <p>Loading events...</p>
-  ) : error ? (
-    <p>{error}</p>
-  ) : events.length > 0 ? (
-    <ul className="space-y-6">
-      {events.map((event) => (
-        <li key={event.id} className="flex items-start gap-6">
-          <FirebaseImage
-            path={event.featuredImage}
-            alt={event.title}
-            className="w-32 h-32 object-cover rounded-lg border border-gray-300 shadow-md"
-          />
-          <div className="flex-1">
-            <strong className="block text-lg font-semibold">{event.title}</strong>
-            <p className="text-sm text-gray-600 mt-1">{event.description}</p>
+          {/* Upcoming Events */}
+          <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-md flex-1 min-w-[300px]">
+            <h2 className="text-xl mb-4">Upcoming Events</h2>
+            {loading ? (
+              <p>Loading events...</p>
+            ) : error ? (
+              <p>{error}</p>
+            ) : events.length > 0 ? (
+              <ul className="space-y-6">
+                {events.map((event) => (
+                  <li key={event.id} className="flex items-start gap-6">
+                    <FirebaseImage
+                      path={event.featuredImage}
+                      alt={event.title}
+                      className="w-32 h-32 object-cover rounded-lg border border-gray-300 shadow-md"
+                    />
+                    <div className="flex-1">
+                      <strong className="block text-lg font-semibold">
+                        {event.title}
+                      </strong>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {event.description}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No upcoming events</p>
+            )}
           </div>
-        </li>
-      ))}
-    </ul>
-  ) : (
-    <p>No upcoming events</p>
-  )}
-</div>
           {/* Notifications */}
           <Notifications />
         </div>
