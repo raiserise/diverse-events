@@ -6,7 +6,7 @@ import FirebaseImage from "../../components/FirebaseImage";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { getFirestore, updateDoc, doc, serverTimestamp,arrayUnion } from "firebase/firestore";
+import { getFirestore, updateDoc, addDoc,collection, doc, serverTimestamp,arrayUnion } from "firebase/firestore";
 import EventModal from "../../components/EventModal";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import CustomModal from "../../components/CustomModal";
@@ -584,37 +584,46 @@ function EventDetails() {
     </div>
       {/* Invite Users Modal */}
       <CustomModal isOpen={isInviteOpen} onRequestClose={() => setIsInviteOpen(false)}>
-  <h2 className="text-lg font-bold">Invite Users</h2>
-  <ul>
-    {users.map((u) => (
-      <li key={u.id} className="flex justify-between items-center p-2 border-b">
-        {u.name} ({u.email})
-        {invitedUsers.includes(u.id) ? (
-          <span className="text-green-500 font-semibold">Invited</span>
-        ) : (
-          <button
-            className="bg-blue-500 text-white px-4 py-3 rounded hover:bg-blue-600"
-            onClick={async () => {
-              const db = getFirestore();
-              try {
-                await updateDoc(doc(db, "events", event.id), {
-                  invitedUsers: arrayUnion(u.id),
-                });
-                setInvitedUsers((prevUsers) => [...prevUsers, u.id]);
-                console.log(`Invited ${u.email}`);
-              } catch (err) {
-                console.error("Error inviting user:", err);
-                toast.error("Failed to invite user.");
-              }
-            }}
-          >
-            Invite
-          </button>
-        )}
-      </li>
-    ))}
-  </ul>
-</CustomModal>
+        <h2 className="text-lg font-bold">Invite Users</h2>
+        <ul className="max-h-full overflow-y-auto"> {/* Make the list scrollable */}
+          {users
+            .filter((u) => !event.organizers.includes(u.id)) // Exclude users who are organizers
+            .map((u) => (
+              <li key={u.id} className="flex justify-between items-center p-2 border-b">
+                {u.name} ({u.email})
+                {invitedUsers.includes(u.id) ? (
+                  <span className="text-green-500 font-semibold">Invited</span>
+                ) : (
+                  <button
+                    className="bg-blue-500 text-white px-4 py-3 rounded hover:bg-blue-600"
+                    onClick={async () => {
+                      const db = getFirestore();
+                      try {
+                        await updateDoc(doc(db, "events", event.id), {
+                          invitedUsers: arrayUnion(u.id),
+                        });
+                        await addDoc(collection(db, "notifications"), {
+                          relatedEventId: event.id,
+                          userId: u.id,
+                          message: `You have been invited to the event: ${event.title}`,
+                          createdAt: serverTimestamp(),
+                          type: "event_invite",
+                          read: false,
+                        });
+                        setInvitedUsers((prevUsers) => [...prevUsers, u.id]);
+                      } catch (err) {
+                        console.error("Error inviting user:", err);
+                        toast.error("Failed to invite user.");
+                      }
+                    }}
+                  >
+                    Invite
+                  </button>
+                )}
+              </li>
+            ))}
+        </ul>
+      </CustomModal>
       {/* Shared Modal for Adding/Editing */}
       {isEditModalOpen && (
         <EventModal
