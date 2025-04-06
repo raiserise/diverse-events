@@ -32,7 +32,7 @@ const CategorySelect = ({ value, onChange }) => {
         target: { name: "category", value: newSelected.join(", ") },
       });
     }
-    // Reset the select (so the default option shows)
+    // Reset the select so that the default option shows again
     e.target.selectedIndex = 0;
   };
 
@@ -96,10 +96,7 @@ const EventModal = ({
           <div className="grid grid-cols-2 gap-4">
             {/* Title */}
             <div>
-              <label
-                htmlFor="title"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="title" className="block text-sm font-medium text-gray-700">
                 Title <span className="text-red-500">*</span>
               </label>
               <input
@@ -114,10 +111,7 @@ const EventModal = ({
             </div>
             {/* Description */}
             <div className="col-span-2">
-              <label
-                htmlFor="description"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
                 Description <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -132,20 +126,14 @@ const EventModal = ({
             </div>
             {/* Category as multi-select dropdown */}
             <div>
-              <label
-                htmlFor="category"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="category" className="block text-sm font-medium text-gray-700">
                 Category <span className="text-red-500">*</span>
               </label>
               <CategorySelect value={formData.category} onChange={onChange} />
             </div>
             {/* Location */}
             <div>
-              <label
-                htmlFor="location"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="location" className="block text-sm font-medium text-gray-700">
                 Location <span className="text-red-500">*</span>
               </label>
               <input
@@ -160,10 +148,7 @@ const EventModal = ({
             </div>
             {/* Start Date */}
             <div>
-              <label
-                htmlFor="startDate"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
                 Start Date <span className="text-red-500">*</span>
               </label>
               <input
@@ -178,10 +163,7 @@ const EventModal = ({
             </div>
             {/* End Date */}
             <div>
-              <label
-                htmlFor="endDate"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">
                 End Date <span className="text-red-500">*</span>
               </label>
               <input
@@ -194,30 +176,9 @@ const EventModal = ({
                 required
               />
             </div>
-            {/* Duration */}
-            <div>
-              <label
-                htmlFor="duration"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Duration (hours) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                name="duration"
-                id="duration"
-                value={formData.duration}
-                onChange={onChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                required
-              />
-            </div>
             {/* Language */}
             <div>
-              <label
-                htmlFor="language"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="language" className="block text-sm font-medium text-gray-700">
                 Language <span className="text-red-500">*</span>
               </label>
               <input
@@ -240,19 +201,13 @@ const EventModal = ({
                 onChange={onChange}
                 className="mr-2"
               />
-              <label
-                htmlFor="acceptsRSVP"
-                className="text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="acceptsRSVP" className="text-sm font-medium text-gray-700">
                 Accepts RSVP
               </label>
             </div>
             {/* File Upload for Featured Image */}
             <div className="col-span-2">
-              <label
-                htmlFor="featuredImageFile"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="featuredImageFile" className="block text-sm font-medium text-gray-700">
                 Upload Featured Image (optional)
               </label>
               <input
@@ -266,10 +221,7 @@ const EventModal = ({
             </div>
             {/* Max Participants */}
             <div>
-              <label
-                htmlFor="maxParticipants"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="maxParticipants" className="block text-sm font-medium text-gray-700">
                 Max Participants <span className="text-red-500">*</span>
               </label>
               <input
@@ -284,10 +236,7 @@ const EventModal = ({
             </div>
             {/* Privacy */}
             <div>
-              <label
-                htmlFor="privacy"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="privacy" className="block text-sm font-medium text-gray-700">
                 Privacy <span className="text-red-500">*</span>
               </label>
               <select
@@ -304,28 +253,41 @@ const EventModal = ({
             </div>
             {/* Format */}
             <div>
-              <label
-                htmlFor="format"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="format" className="block text-sm font-medium text-gray-700">
                 Format <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
+              <select
                 name="format"
                 id="format"
                 value={formData.format}
                 onChange={onChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
                 required
-              />
+              >
+                <option value="Online">Online</option>
+                <option value="Physical">Physical</option>
+                <option value="Hybrid">Hybrid</option>
+              </select>
             </div>
+            {/* Conditionally show Invite Link if format is Online */}
+            {formData.format === "Online" && (
+              <div className="col-span-2">
+                <label htmlFor="inviteLink" className="block text-sm font-medium text-gray-700">
+                  Invite Link
+                </label>
+                <input
+                  type="text"
+                  name="inviteLink"
+                  id="inviteLink"
+                  value={formData.inviteLink || ""}
+                  onChange={onChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                />
+              </div>
+            )}
             {/* Status */}
             <div>
-              <label
-                htmlFor="status"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="status" className="block text-sm font-medium text-gray-700">
                 Status <span className="text-red-500">*</span>
               </label>
               <select
@@ -342,10 +304,7 @@ const EventModal = ({
             </div>
             {/* Terms */}
             <div className="col-span-2">
-              <label
-                htmlFor="terms"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="terms" className="block text-sm font-medium text-gray-700">
                 Terms & Conditions <span className="text-red-500">*</span>
               </label>
               <textarea
