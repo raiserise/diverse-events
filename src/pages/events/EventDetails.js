@@ -45,7 +45,7 @@ function EventDetails() {
 
   // Fetch event data with authentication
   useEffect(() => {
-    if (!user) return; // Wait until the auth state is determined
+    if (!user) return; // Wait until auth state is determined
     const fetchEvent = async () => {
       try {
         let eventData;
@@ -62,6 +62,7 @@ function EventDetails() {
           setError("Event not found.");
           return;
         }
+        // Privacy Check: If the event is private, ensure the user is allowed to view it.
         if (eventData.privacy === "private") {
           if (!user) {
             setError("Authentication required to view this private event.");
@@ -84,7 +85,9 @@ function EventDetails() {
         }
         if (eventData.participants?.length) {
           const parts = await Promise.all(
-            eventData.participants.map((participantId) => getDataById("/users", participantId, true))
+            eventData.participants.map((participantId) =>
+              getDataById("/users", participantId, true)
+            )
           );
           setParticipants(parts);
         }
@@ -198,7 +201,6 @@ function EventDetails() {
         event.endDate && event.endDate._seconds
           ? new Date(event.endDate._seconds * 1000).toISOString().slice(0, 16)
           : "",
-      duration: event.duration || "",
       language: event.language || "",
       acceptsRSVP: event.acceptsRSVP || false,
       featuredImage: event.featuredImage || "",
@@ -207,6 +209,7 @@ function EventDetails() {
       format: event.format || "",
       terms: event.terms || "",
       status: event.status || "active",
+      inviteLink: event.inviteLink || "", // Include inviteLink field
     });
     setEditImageFile(null);
     setIsEditModalOpen(true);
@@ -317,6 +320,13 @@ function EventDetails() {
       </div>
     );
 
+  // Prepare the external invite URL.
+  // If the invite link doesn't start with "http", prepend "http://"
+  const inviteURL =
+    event.inviteLink && !event.inviteLink.startsWith("http")
+      ? `http://${event.inviteLink}`
+      : event.inviteLink;
+
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white shadow-lg rounded-lg relative">
       {/* Featured Image */}
@@ -352,9 +362,7 @@ function EventDetails() {
       {/* Event Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            Event Overview
-          </h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">Event Overview</h3>
           <div className="space-y-4">
             <p>
               <strong className="text-gray-900">Description:</strong>{" "}
@@ -373,9 +381,7 @@ function EventDetails() {
         </div>
 
         <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            Event Details
-          </h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">Event Details</h3>
           <div className="space-y-4">
             <p>
               <strong className="text-gray-900">Category:</strong>{" "}
@@ -391,12 +397,10 @@ function EventDetails() {
                 : "No categories"}
             </p>
             <p>
-              <strong className="text-gray-900">Event Type:</strong>{" "}
-              {event.format}
+              <strong className="text-gray-900">Event Type:</strong> {event.format}
             </p>
             <p>
-              <strong className="text-gray-900">Language:</strong>{" "}
-              {event.language}
+              <strong className="text-gray-900">Language:</strong> {event.language}
             </p>
             <p>
               <strong className="text-gray-900">Max Participants:</strong>{" "}
@@ -405,6 +409,22 @@ function EventDetails() {
           </div>
         </div>
       </div>
+
+      {/* Conditionally render Invite Link only if format is "Online" */}
+      {event.format === "Online" && (
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">Invite Link</h3>
+          <p className="text-sm text-blue-600">
+            {event.inviteLink ? (
+              <a href={inviteURL} target="_blank" rel="noopener noreferrer">
+                {event.inviteLink}
+              </a>
+            ) : (
+              "No invite link provided."
+            )}
+          </p>
+        </div>
+      )}
 
       {/* Date & Participation Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
@@ -422,16 +442,20 @@ function EventDetails() {
                 : "N/A"}
             </p>
             <p>
-              <strong className="text-gray-900">Duration:</strong>{" "}
-              {event.duration} hour(s)
+              <strong className="text-gray-900">End Date:</strong>{" "}
+              {event.endDate?._seconds
+                ? new Date(event.endDate._seconds * 1000).toLocaleString("en-US", {
+                    timeZone: "Asia/Shanghai",
+                    dateStyle: "medium",
+                    timeStyle: "medium",
+                  })
+                : "N/A"}
             </p>
           </div>
         </div>
 
         <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            Participation
-          </h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">Participation</h3>
           <div className="space-y-4">
             <p>
               <strong className="text-gray-900">RSVP Status:</strong>{" "}
@@ -553,7 +577,7 @@ function EventDetails() {
         </button>
       )}
 
-      {/* Shared Modal for Adding/Editing */}
+      {/* Shared Modal for Editing */}
       {isEditModalOpen && (
         <EventModal
           isOpen={isEditModalOpen}

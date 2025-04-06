@@ -7,64 +7,58 @@ import FirebaseImage from "../../components/FirebaseImage";
 const DEFAULT_IMAGE = "gs://diverseevents-af6ea.firebasestorage.app/noimage.jpg";
 
 function Events() {
-  // Use 'user' from your AuthProvider (if needed)
-
   const {
     loading,
     error,
     events,
-    privateEvent,
-    publicEvent,
-    offlineEvent,
-    onlineEvent,
-    searchParams,
   } = GetEventLogic();
 
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  // New state for filtering by event format
+  const [selectedFormat, setSelectedFormat] = useState("");
 
-  // Update filtered events when events or search query change
+  // Update the filtered events when any dependency changes
   useEffect(() => {
-    const currentFilter = searchParams.get("filter") || "total";
     let filtered = [];
-
-    if (currentFilter === "total") {
-      filtered = events;
-    } else if (currentFilter === "private") {
-      filtered = privateEvent;
-    } else if (currentFilter === "public") {
-      filtered = publicEvent;
-    } else if (currentFilter === "offline") {
-      filtered = offlineEvent;
-    } else if (currentFilter === "online") {
-      filtered = onlineEvent;
-    }
-
-    const results = filtered.filter((event) =>
+    filtered = events;
+    // First filter by title search
+    let results = filtered.filter((event) =>
       (event.title || "").toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    // Then filter by selected event format if one is chosen
+    if (selectedFormat) {
+      results = results.filter((event) => event.format === selectedFormat);
+    }
 
     setFilteredEvents(results);
   }, [
     events,
-    privateEvent,
-    publicEvent,
-    offlineEvent,
-    onlineEvent,
-    searchParams,
     searchQuery,
+    selectedFormat,
   ]);
 
   return (
     <>
       {/* Search and filter bar */}
-      <div className="w-full px-6 my-4 bg-neutral-200 flex items-center justify-between rounded-[18px]">
+      <div className="w-full px-6 my-4 bg-neutral-200 flex items-center rounded-[18px]">
         <input
           type="text"
           placeholder="Search by title"
-          className="w-full bg-transparent py-4 outline-none"
+          className="flex-grow bg-transparent py-4 outline-none"
           onChange={(e) => setSearchQuery(e.target.value)}
         />
+        <select
+          value={selectedFormat}
+          onChange={(e) => setSelectedFormat(e.target.value)}
+          className="w-max bg-transparent py-4 pl-4 outline-none border-l border-neutral-300"
+        >
+          <option value="">All Formats</option>
+          <option value="Online">Online</option>
+          <option value="Physical">Physical</option>
+          <option value="Hybrid">Hybrid</option>
+        </select>
       </div>
 
       {loading ? (
