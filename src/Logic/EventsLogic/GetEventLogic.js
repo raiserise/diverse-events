@@ -17,7 +17,7 @@ function GetEventLogic() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const eventsData = await getAllData("/events", false); // Does not require authentication
+        const eventsData = await getAllData("/events", true); // Does not require authentication
         setEvents(eventsData);
       } catch (err) {
         setError(err.message);
