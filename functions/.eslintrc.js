@@ -15,6 +15,16 @@ module.exports = {
     "prefer-arrow-callback": "error",
     "quotes": ["error", "double", {allowTemplateLiterals: true}],
     "new-cap": 0,
+    "max-len": [
+      "error",
+      {
+        code: 110,
+        ignoreStrings: true, // Ignore string literals
+        ignoreTemplateLiterals: true, // Ignore backtick strings
+        ignoreUrls: true, // Ignore URLs
+        ignoreRegExpLiterals: true, // Ignore regex patterns
+      },
+    ],
   },
   overrides: [
     {
