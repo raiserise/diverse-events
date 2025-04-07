@@ -110,8 +110,9 @@ const SideBar = () => {
       {user && (
         <div className="text-center mb-4">
           <h2 className="text-lg font-bold">
-            Welcome back, {profileName}!
+            Welcome back!
           </h2>
+          <p className="text-sm font-bold">{profileName || "Guest"}</p>
         </div>
       )}
       {menuItems.map((menu, index) => (
