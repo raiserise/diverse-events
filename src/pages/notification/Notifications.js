@@ -73,19 +73,21 @@ const Notifications = () => {
       </div>
 
       {filteredNotifications.length > 0 ? (
-        filteredNotifications.map((notification) => (
-          <div
-            key={notification.id}
-            onClick={() => handleNotificationClick(notification)}
-            className={`notification-item ${notification.read ? "read" : ""}`}
-          >
-            <h4>{notification.type.replace(/_/g, " ")}</h4>
-            <p>{notification.message}</p>
-            <small>
-              {new Date(notification.createdAt._seconds * 1000).toLocaleDateString()}
-            </small>
-          </div>
-        ))
+        filteredNotifications
+          .sort((a, b) => b.createdAt._seconds - a.createdAt._seconds) // Sorting by timestamp in descending order
+          .map((notification) => (
+            <div
+              key={notification.id}
+              onClick={() => handleNotificationClick(notification)}
+              className={`notification-item ${notification.read ? "read" : ""}`}
+            >
+              <h4>{notification.type.replace(/_/g, " ")}</h4>
+              <p>{notification.message}</p>
+              <small>
+                {new Date(notification.createdAt._seconds * 1000).toLocaleDateString()}
+              </small>
+            </div>
+          ))
       ) : (
         <p className="no-notifications">No notifications available.</p>
       )}
