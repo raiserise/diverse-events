@@ -31,11 +31,6 @@ const menuItems = [
         icon: <EventNoteIcon />,
       },
       {
-        label: "Invites",
-        href: "/invites",
-        icon: <ProfileIcon />,
-      },
-      {
         label: "RSVP",
         href: "/rsvp",
         icon: <RSVPIcon />,
