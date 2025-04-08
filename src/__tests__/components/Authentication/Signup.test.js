@@ -1,9 +1,13 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom"; // Import MemoryRouter
+import { MemoryRouter } from "react-router-dom";
 import Signup from "../../../pages/signup/Signup";
-import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+} from "firebase/auth";
 
 // Mock Firebase functions
 jest.mock("firebase/auth", () => ({
@@ -14,16 +18,17 @@ jest.mock("firebase/auth", () => ({
 
 describe("Signup Component", () => {
   beforeEach(() => {
-    jest.clearAllMocks(); // Clear mocks before each test
+    jest.clearAllMocks();
 
-    // Mock resolved values
+    getAuth.mockReturnValue({}); // ✅ Mock it to avoid `undefined`
+
     createUserWithEmailAndPassword.mockResolvedValue({
-      user: { user_id: "12345", email: "test@example.com" },
+      user: { uid: "12345", email: "test@example.com" },
     });
 
     signInWithPopup.mockResolvedValue({
       user: {
-        user_id: "12345",
+        uid: "12345",
         email: "test@example.com",
         displayName: "Test User",
       },
@@ -68,7 +73,9 @@ describe("Signup Component", () => {
 
     fireEvent.click(screen.getByText("Sign Up with Email"));
 
-    expect(screen.getByText("Passwords do not match")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Passwords do not match")
+    ).toBeInTheDocument();
   });
 
   test("signs up with email and password", async () => {
@@ -97,10 +104,12 @@ describe("Signup Component", () => {
 
     fireEvent.click(screen.getByText("Sign Up with Email"));
 
-    expect(createUserWithEmailAndPassword).toHaveBeenCalledWith(
-      undefined,
-      "test@example.com",
-      "password123"
-    );
+    await waitFor(() => {
+      expect(createUserWithEmailAndPassword).toHaveBeenCalledWith(
+        expect.anything(), // auth object
+        "test@example.com",
+        "password123"
+      );
+    });
   });
 });
