@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getAllData } from "../../api/apiService";
-import Calendar from "react-calendar";
+// import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 
 import Notifications from "../notification/Notifications";
@@ -55,14 +55,12 @@ const DashboardPage = () => {
       <main className="flex-1 p-4 overflow-y-auto">
         <div className="flex flex-wrap gap-4">
           {/* Current Date & Time */}
-          <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-md flex-1 min-w-[200px]">
-            <h2 className="text-xl mb-2">Current Date & Time</h2>
-            <p>{date.toString()}</p>
+          {/* <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-md flex-1 min-w-[200px]">
             <Calendar
               value={date}
               className="reactp-2 border border-gray-300 rounded-lg shadow-inner"
             />
-          </div>
+          </div> */}
 
           {/* Upcoming Events */}
           <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-md flex-1 min-w-[300px]">

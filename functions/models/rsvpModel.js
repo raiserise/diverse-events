@@ -1,4 +1,4 @@
-const { db } = require("../config/firebase");
+const {db} = require("../config/firebase");
 const admin = require("firebase-admin");
 
 const createRSVP = async (eventId, userId, data) => {
@@ -15,10 +15,10 @@ const createRSVP = async (eventId, userId, data) => {
 
   // Prevent duplicate RSVP
   const existingRSVP = await db
-    .collection("rsvps")
-    .where("eventId", "==", eventId)
-    .where("userId", "==", userId)
-    .get();
+      .collection("rsvps")
+      .where("eventId", "==", eventId)
+      .where("userId", "==", userId)
+      .get();
 
   if (!existingRSVP.empty) {
     throw new Error("You have already RSVP'd for this event.");
@@ -28,7 +28,7 @@ const createRSVP = async (eventId, userId, data) => {
   const rsvpRef = db.collection("rsvps").doc();
   await rsvpRef.set(rsvpData);
 
-  return { id: rsvpRef.id, ...rsvpData };
+  return {id: rsvpRef.id, ...rsvpData};
 };
 
 const updateRSVP = async (rsvpId, userId, status) => {
@@ -46,7 +46,7 @@ const updateRSVP = async (rsvpId, userId, status) => {
 
   if (status === "cancelled" && !isParticipant) {
     throw new Error(
-      "Unauthorized: Only the participant can cancel their RSVP."
+        "Unauthorized: Only the participant can cancel their RSVP.",
     );
   }
 
@@ -88,7 +88,7 @@ const updateRSVP = async (rsvpId, userId, status) => {
         const diffMinutes = (now - lastCancelledAt) / (1000 * 60);
         if (diffMinutes < cooldownMinutes) {
           throw new Error(
-            `You must wait ${cooldownMinutes - diffMinutes} minutes before RSVPing again.`
+              `You must wait ${cooldownMinutes - diffMinutes} minutes before RSVPing again.`,
           );
         }
       }
@@ -132,7 +132,7 @@ const updateRSVP = async (rsvpId, userId, status) => {
       }),
     });
 
-    return { id: rsvpId, status };
+    return {id: rsvpId, status};
   });
 };
 
@@ -142,7 +142,7 @@ const getRSVPsByStatus = async (eventId, status) => {
     query = query.where("status", "==", status);
   }
   const snapshot = await query.get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}));
 };
 
 const getRSVPById = async (rsvpId) => {
@@ -152,16 +152,16 @@ const getRSVPById = async (rsvpId) => {
     throw new Error("RSVP not found.");
   }
 
-  return { id: rsvpDoc.id, ...rsvpDoc.data() };
+  return {id: rsvpDoc.id, ...rsvpDoc.data()};
 };
 
 const getRSVPsByEvent = async (eventId) => {
   try {
     const snapshot = await db
-      .collection("rsvps")
-      .where("eventId", "==", eventId)
-      .get();
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        .collection("rsvps")
+        .where("eventId", "==", eventId)
+        .get();
+    return snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}));
   } catch (error) {
     throw new Error(`Error fetching RSVPs for event: ${error.message}`);
   }
@@ -170,18 +170,18 @@ const getRSVPsByEvent = async (eventId) => {
 const findRSVP = async (eventId, userId) => {
   try {
     const snapshot = await db
-      .collection("rsvps")
-      .where("eventId", "==", eventId)
-      .where("userId", "==", userId)
-      .limit(1)
-      .get();
+        .collection("rsvps")
+        .where("eventId", "==", eventId)
+        .where("userId", "==", userId)
+        .limit(1)
+        .get();
 
-    return snapshot.empty
-      ? null
-      : {
-          id: snapshot.docs[0].id,
-          ...snapshot.docs[0].data(),
-        };
+    return snapshot.empty ?
+      null :
+      {
+        id: snapshot.docs[0].id,
+        ...snapshot.docs[0].data(),
+      };
   } catch (error) {
     throw new Error(`RSVP lookup failed: ${error.message}`);
   }
@@ -195,15 +195,15 @@ const getUserRSVPs = async (userId) => {
   try {
     console.log(`Fetching RSVPs for user: ${userId}`);
     const snapshot = await db
-      .collection("rsvps")
-      .where("userId", "==", userId)
-      .get();
+        .collection("rsvps")
+        .where("userId", "==", userId)
+        .get();
 
     if (snapshot.empty) {
       console.log(`No RSVPs found for user: ${userId}`);
     }
 
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    return snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}));
   } catch (error) {
     throw new Error(`Error fetching user RSVPs: ${error.message}`);
   }

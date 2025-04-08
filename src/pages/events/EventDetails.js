@@ -6,9 +6,22 @@ import FirebaseImage from "../../components/FirebaseImage";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { getFirestore, updateDoc, addDoc,collection, doc, serverTimestamp,arrayUnion } from "firebase/firestore";
+import {
+  getFirestore,
+  updateDoc,
+  addDoc,
+  collection,
+  doc,
+  serverTimestamp,
+  arrayUnion,
+} from "firebase/firestore";
 import EventModal from "../../components/EventModal";
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import {
+  getStorage,
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+} from "firebase/storage";
 import CustomModal from "../../components/CustomModal";
 import { getAllData } from "../../api/apiService";
 
@@ -60,7 +73,7 @@ function EventDetails() {
 
   // Fetch event data with authentication
   useEffect(() => {
-    if (!user) return; // Wait until the auth state is determined
+    if (!user) return; // Wait until auth state is determined
     const fetchEvent = async () => {
       try {
         let eventData;
@@ -77,6 +90,7 @@ function EventDetails() {
           setError("Event not found.");
           return;
         }
+        // Privacy Check: If the event is private, ensure the user is allowed to view it.
         if (eventData.privacy === "private") {
           if (!user) {
             setError("Authentication required to view this private event.");
@@ -95,13 +109,17 @@ function EventDetails() {
         setEvent({ id, ...eventData });
         if (eventData.organizers?.length) {
           const orgs = await Promise.all(
-            eventData.organizers.map((orgId) => getDataById("/users", orgId, true))
+            eventData.organizers.map((orgId) =>
+              getDataById("/users", orgId, true)
+            )
           );
           setOrganizers(orgs);
         }
         if (eventData.participants?.length) {
           const parts = await Promise.all(
-            eventData.participants.map((participantId) => getDataById("/users", participantId, true))
+            eventData.participants.map((participantId) =>
+              getDataById("/users", participantId, true)
+            )
           );
           setParticipants(parts);
         }
@@ -116,11 +134,15 @@ function EventDetails() {
       try {
         const response = await getDataById("/rsvp/check", id, true);
         if (response.exists && response.status === "cancelled") {
-          const lastCancelledAt = parseFirestoreTimestamp(response.lastCancelledAt);
+          const lastCancelledAt = parseFirestoreTimestamp(
+            response.lastCancelledAt
+          );
           const cooldownOver = Date.now() - lastCancelledAt >= 30 * 60 * 1000;
           if (!cooldownOver) {
             setIsRSVP(true);
-            const remainingTime = Math.ceil((30 * 60 * 1000 - (Date.now() - lastCancelledAt)) / 1000);
+            const remainingTime = Math.ceil(
+              (30 * 60 * 1000 - (Date.now() - lastCancelledAt)) / 1000
+            );
             setCooldownRemaining(remainingTime);
             return;
           } else {
@@ -168,13 +190,19 @@ function EventDetails() {
           const lastCancelledTime = parseFirestoreTimestamp(lastCancelledAt);
           const cooldownDuration = 30 * 60 * 1000;
           if (Date.now() - lastCancelledTime < cooldownDuration) {
-            const remainingTime = Math.ceil((cooldownDuration - (Date.now() - lastCancelledTime)) / 60000);
+            const remainingTime = Math.ceil(
+              (cooldownDuration - (Date.now() - lastCancelledTime)) / 60000
+            );
             toast.error(`You can RSVP again in ${remainingTime} minutes.`);
             setSubmitting(false);
             return;
           }
         }
-        await patchData(`/rsvp/${response.rsvpId}/status`, { status: "pending" }, true);
+        await patchData(
+          `/rsvp/${response.rsvpId}/status`,
+          { status: "pending" },
+          true
+        );
         setIsRSVP(true);
         toast.success("RSVP updated successfully!");
       } else {
@@ -215,7 +243,6 @@ function EventDetails() {
         event.endDate && event.endDate._seconds
           ? new Date(event.endDate._seconds * 1000).toISOString().slice(0, 16)
           : "",
-      duration: event.duration || "",
       language: event.language || "",
       acceptsRSVP: event.acceptsRSVP || false,
       featuredImage: event.featuredImage || "",
@@ -224,6 +251,7 @@ function EventDetails() {
       format: event.format || "",
       terms: event.terms || "",
       status: event.status || "active",
+      inviteLink: event.inviteLink || "", // Include inviteLink field
     });
     setEditImageFile(null);
     setIsEditModalOpen(true);
@@ -267,8 +295,12 @@ function EventDetails() {
       toast.error("You must be logged in to edit an event.");
       return;
     }
-    const updatedStartDate = editFormData.startDate ? new Date(editFormData.startDate) : null;
-    const updatedEndDate = editFormData.endDate ? new Date(editFormData.endDate) : null;
+    const updatedStartDate = editFormData.startDate
+      ? new Date(editFormData.startDate)
+      : null;
+    const updatedEndDate = editFormData.endDate
+      ? new Date(editFormData.endDate)
+      : null;
     let newFeaturedImage = editFormData.featuredImage;
     if (editImageFile) {
       try {
@@ -277,7 +309,7 @@ function EventDetails() {
         console.error("Error uploading image:", err);
         toast.error("Image upload failed. Using previous image.");
       }
-    } 
+    }
     const updatedData = {
       ...editFormData,
       category: editFormData.category.split(",").map((cat) => cat.trim()),
@@ -333,6 +365,13 @@ function EventDetails() {
         <p className="text-gray-500">No event found</p>
       </div>
     );
+
+  // Prepare the external invite URL.
+  // If the invite link doesn't start with "http", prepend "http://"
+  const inviteURL =
+    event.inviteLink && !event.inviteLink.startsWith("http")
+      ? `http://${event.inviteLink}`
+      : event.inviteLink;
 
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white shadow-lg rounded-lg relative">
@@ -423,6 +462,24 @@ function EventDetails() {
         </div>
       </div>
 
+      {/* Conditionally render Invite Link only if format is "Online" */}
+      {event.format === "Online" && (
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            Invite Link
+          </h3>
+          <p className="text-sm text-blue-600">
+            {event.inviteLink ? (
+              <a href={inviteURL} target="_blank" rel="noopener noreferrer">
+                {event.inviteLink}
+              </a>
+            ) : (
+              "No invite link provided."
+            )}
+          </p>
+        </div>
+      )}
+
       {/* Date & Participation Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <div>
@@ -431,16 +488,28 @@ function EventDetails() {
             <p>
               <strong className="text-gray-900">Start Date:</strong>{" "}
               {event.startDate?._seconds
-                ? new Date(event.startDate._seconds * 1000).toLocaleString("en-US", {
-                    timeZone: "Asia/Shanghai",
-                    dateStyle: "medium",
-                    timeStyle: "medium",
-                  })
+                ? new Date(event.startDate._seconds * 1000).toLocaleString(
+                    "en-US",
+                    {
+                      timeZone: "Asia/Shanghai",
+                      dateStyle: "medium",
+                      timeStyle: "medium",
+                    }
+                  )
                 : "N/A"}
             </p>
             <p>
-              <strong className="text-gray-900">Duration:</strong>{" "}
-              {event.duration} hour(s)
+              <strong className="text-gray-900">End Date:</strong>{" "}
+              {event.endDate?._seconds
+                ? new Date(event.endDate._seconds * 1000).toLocaleString(
+                    "en-US",
+                    {
+                      timeZone: "Asia/Shanghai",
+                      dateStyle: "medium",
+                      timeStyle: "medium",
+                    }
+                  )
+                : "N/A"}
             </p>
           </div>
         </div>
@@ -533,63 +602,69 @@ function EventDetails() {
                   isRSVP
                     ? "bg-green-500 cursor-default"
                     : canRSVP
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-gray-400 cursor-not-allowed"
+                      ? "bg-blue-600 hover:bg-blue-700"
+                      : "bg-gray-400 cursor-not-allowed"
                 }`}
               >
                 {submitting
                   ? "Submitting..."
                   : isRSVP
-                  ? "RSVP Confirmed"
-                  : canRSVP
-                  ? "RSVP Now"
-                  : `You can RSVP again in ${Math.floor(cooldownRemaining / 60)}m ${
-                      cooldownRemaining % 60
-                    }s`}
+                    ? "RSVP Confirmed"
+                    : canRSVP
+                      ? "RSVP Now"
+                      : `You can RSVP again in ${Math.floor(cooldownRemaining / 60)}m ${
+                          cooldownRemaining % 60
+                        }s`}
               </button>
-              {!canRSVP &&
-                cooldownRemaining > 0 &&
-                isRSVP && (
-                  <p className="text-red-500 text-center text-sm mt-2">
-                    You can RSVP again in {Math.floor(cooldownRemaining / 60)}m{" "}
-                    {cooldownRemaining % 60}s
-                  </p>
-                )}
+              {!canRSVP && cooldownRemaining > 0 && isRSVP && (
+                <p className="text-red-500 text-center text-sm mt-2">
+                  You can RSVP again in {Math.floor(cooldownRemaining / 60)}m{" "}
+                  {cooldownRemaining % 60}s
+                </p>
+              )}
             </>
           )}
         </div>
       )}
       {/* Button Container */}
       <div className="fixed bottom-6 right-6 flex gap-4">
-      {/* Invite Button for Organizers */}
-      {privacy === "private" &&
-        organizers.some((org) => org.id === user?.uid) && (
+        {/* Invite Button for Organizers */}
+        {privacy === "private" &&
+          organizers.some((org) => org.id === user?.uid) && (
+            <button
+              onClick={() => setIsInviteOpen(true)}
+              className="bg-purple-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-purple-600 transition"
+            >
+              Invite Users
+            </button>
+          )}
+
+        {/* Edit Button for Organizers */}
+        {organizers.some((org) => org.id === user?.uid) && (
           <button
-            onClick={() => setIsInviteOpen(true)}
-            className="bg-purple-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-purple-600 transition"
+            onClick={handleEditClick}
+            className="bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-orange-600 transition"
           >
-            Invite Users
+            Edit Event
           </button>
         )}
-
-      {/* Edit Button for Organizers */}
-      {organizers.some((org) => org.id === user?.uid) && (
-        <button
-          onClick={handleEditClick}
-          className="bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-orange-600 transition"
-        >
-          Edit Event
-        </button>
-      )}
-    </div>
+      </div>
       {/* Invite Users Modal */}
-      <CustomModal isOpen={isInviteOpen} onRequestClose={() => setIsInviteOpen(false)}>
+      <CustomModal
+        isOpen={isInviteOpen}
+        onRequestClose={() => setIsInviteOpen(false)}
+      >
         <h2 className="text-lg font-bold">Invite Users</h2>
-        <ul className="max-h-full overflow-y-auto"> {/* Make the list scrollable */}
+        <ul className="max-h-full overflow-y-auto">
+          {" "}
+          {/* Make the list scrollable */}
           {users
             .filter((u) => !event.organizers.includes(u.id)) // Exclude users who are organizers
             .map((u) => (
-              <li key={u.id} className="flex justify-between items-center p-2 border-b">
+              <li
+                key={u.id}
+                className="flex justify-between items-center p-2 border-b"
+              >
                 {u.name} ({u.email})
                 {invitedUsers.includes(u.id) ? (
                   <span className="text-green-500 font-semibold">Invited</span>
@@ -624,7 +699,7 @@ function EventDetails() {
             ))}
         </ul>
       </CustomModal>
-      {/* Shared Modal for Adding/Editing */}
+      {/* Shared Modal for Editing */}
       {isEditModalOpen && (
         <EventModal
           isOpen={isEditModalOpen}

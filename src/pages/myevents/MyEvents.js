@@ -33,6 +33,7 @@ function MyEvents() {
     format: "Physical",
     terms: "",
     status: "active",
+    inviteLink: "",
   });
   // State for file upload
   const [imageFile, setImageFile] = useState(null);
