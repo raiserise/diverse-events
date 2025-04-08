@@ -13,12 +13,12 @@ module.exports = {
   rules: {
     "no-restricted-globals": ["error", "name", "length"],
     "prefer-arrow-callback": "error",
-    "quotes": ["error", "double", {allowTemplateLiterals: true}],
+    quotes: ["error", "double", { allowTemplateLiterals: true }],
     "new-cap": 0,
     "max-len": [
       "error",
       {
-        code: 110,
+        code: 140,
         ignoreStrings: true, // Ignore string literals
         ignoreTemplateLiterals: true, // Ignore backtick strings
         ignoreUrls: true, // Ignore URLs
