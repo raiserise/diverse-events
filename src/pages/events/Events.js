@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import GetEventLogic from "../../Logic/EventsLogic/GetEventLogic";
 import FirebaseImage from "../../components/FirebaseImage";
 
-const DEFAULT_IMAGE = "gs://diverseevents-af6ea.firebasestorage.app/noimage.jpg";
+const DEFAULT_IMAGE =
+  "gs://diverseevents-af6ea.firebasestorage.app/noimage.jpg";
 
 function Events() {
   const { loading, error, events } = GetEventLogic();
@@ -13,26 +14,26 @@ function Events() {
   const [selectedFormat, setSelectedFormat] = useState("");
 
   useEffect(() => {
+    const filterEvents = () => {
+      let results = events;
+
+      // Filter by title
+      if (searchQuery) {
+        results = results.filter((event) =>
+          (event.title || "").toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+
+      // Filter by format
+      if (selectedFormat) {
+        results = results.filter((event) => event.format === selectedFormat);
+      }
+
+      setFilteredEvents(results);
+    };
+
     filterEvents();
   }, [events, searchQuery, selectedFormat]);
-
-  const filterEvents = () => {
-    let results = events;
-
-    // Filter by title
-    if (searchQuery) {
-      results = results.filter((event) =>
-        (event.title || "").toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Filter by format
-    if (selectedFormat) {
-      results = results.filter((event) => event.format === selectedFormat);
-    }
-
-    setFilteredEvents(results);
-  };
 
   return (
     <>
@@ -78,9 +79,7 @@ const SearchAndFilterBar = ({
   </div>
 );
 
-const LoadingMessage = () => (
-  <p className="text-center py-4">Loading...</p>
-);
+const LoadingMessage = () => <p className="text-center py-4">Loading...</p>;
 
 const EventGrid = ({ error, events }) => (
   <div>
