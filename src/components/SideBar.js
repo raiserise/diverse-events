@@ -31,11 +31,6 @@ const menuItems = [
         icon: <EventNoteIcon />,
       },
       {
-        label: "Invites",
-        href: "/invites",
-        icon: <ProfileIcon />,
-      },
-      {
         label: "RSVP",
         href: "/rsvp",
         icon: <RSVPIcon />,
@@ -92,6 +87,18 @@ const SideBar = () => {
         });
     }
   }, [user]);
+  
+  // handle when profile updated
+  useEffect(() => {
+    const handleProfileUpdate = (event) => {
+      setProfileName(event.detail.displayName);
+    };
+    window.addEventListener("profileUpdated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("profileUpdated", handleProfileUpdate);
+    };
+  }
+  , []);  
 
   const handleSignOut = () => {
     signOut(auth)
@@ -110,8 +117,9 @@ const SideBar = () => {
       {user && (
         <div className="text-center mb-4">
           <h2 className="text-lg font-bold">
-            Welcome back, {profileName}!
+            Welcome back!
           </h2>
+          <p className="text-sm font-bold">{profileName || "Guest"}</p>
         </div>
       )}
       {menuItems.map((menu, index) => (

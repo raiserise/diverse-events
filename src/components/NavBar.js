@@ -1,68 +1,31 @@
 // src/components/NavBar.js
 import React, { useEffect, useState } from "react";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 const Navbar = ({ pageTitle }) => {
-  const [navBarData, setNavBarData] = useState([]);
-  const [user, setUser] = useState(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    const auth = getAuth();
-    onAuthStateChanged(auth, (user) => {
-      setUser(user);
-    });
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval); // Cleanup interval on component unmount
   }, []);
-
-  // const handleSignOut = () => {
-  //   const auth = getAuth();
-  //   signOut(auth)
-  //     .then(() => {
-  //       setUser(null);
-  //       // Consider setting toast to show that user has signed out
-  //     })
-  //     .catch((error) => {
-  //       console.error("Error signing out: ", error);
-  //     });
-  // };
-
-  useEffect(() => {
-    setNavBarData([
-      // {
-      //   title: "Dashboard",
-      //   link: "/dashboard",
-      //   show: user ? true : false,
-      // },
-      // {
-      //   title: user ? "Signout" : "Login",
-      //   link: user ? "/" : "/login",
-      //   show: true,
-      //   onclick: user ? handleSignOut : null,
-      // },
-      // {
-      //   title: "Signup",
-      //   link: "/signup",
-      //   show: user ? false : true,
-      // },
-    ]);
-  }, [user]);
 
   return (
     <nav className="bg-gray-800 text-white p-4">
       <div className="container mx-auto flex justify-between items-center">
+        {/* Left: Page Title */}
         <h1 className="text-2xl font-bold">{pageTitle}</h1>
-        <ul className="flex gap-4">
-          {navBarData.map((item, index) => {
-            return (
-              <li key={index}>
-                {item.show && (
-                  <a href={item.link} className="hover:underline">
-                    {item.title}
-                  </a>
-                )}
-              </li>
-            );
+
+        {/* Right: Current Date and Time */}
+        <div className="text-sm">
+          {currentTime.toLocaleString("en-US", {
+            timeZone: "Asia/Shanghai",
+            dateStyle: "medium",
+            timeStyle: "medium",
           })}
-        </ul>
+        </div>
       </div>
     </nav>
   );

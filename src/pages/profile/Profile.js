@@ -3,6 +3,8 @@ import React, { useEffect, useState } from "react";
 import { getAuth, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
 
+import {toast} from "react-toastify";
+
 const Profile = () => {
   const [user, setUser] = useState(null);
   const [displayName, setDisplayName] = useState("");
@@ -39,7 +41,11 @@ const Profile = () => {
         name: displayName,
       });
 
-      alert("Profile updated successfully!");
+      
+      const event = new CustomEvent("profileUpdated", { detail: { displayName } });
+      window.dispatchEvent(event);
+      toast.success("Profile updated successfully!");
+
     } catch (error) {
       console.error("Error updating profile: ", error);
     }
@@ -53,7 +59,7 @@ const Profile = () => {
     }
     try {
       await auth.currentUser.delete();
-      alert("Account deleted successfully!");
+      toast.success("Account deleted successfully!");
     } catch (error) {
       console.error("Error deleting account: ", error);
     }

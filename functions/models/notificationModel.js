@@ -1,4 +1,4 @@
-const { db } = require("../config/firebase");
+const {db} = require("../config/firebase");
 const admin = require("firebase-admin");
 
 const createNotification = async ({
@@ -33,10 +33,10 @@ const createNotification = async ({
 const getNotificationsForUser = async (userId) => {
   try {
     const snapshot = await db
-      .collection("notifications")
-      .where("userId", "==", userId)
-      .get();
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        .collection("notifications")
+        .where("userId", "==", userId)
+        .get();
+    return snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}));
   } catch (error) {
     throw new Error(`Error fetching notifications: ${error.message}`);
   }
@@ -45,16 +45,16 @@ const getNotificationsForUser = async (userId) => {
 const markNotificationAsRead = async (notificationId) => {
   try {
     // Verify notification ownership
-    const notification = await db
-      .collection("notifications")
-      .doc(notificationId)
-      .get();
+    // const notification = await db
+    //     .collection("notifications")
+    //     .doc(notificationId)
+    //     .get();
 
     await db.collection("notifications").doc(notificationId).update({
       read: true,
     });
 
-    return { id: notificationId, read: true };
+    return {id: notificationId, read: true};
   } catch (error) {
     throw new Error(`Error updating notification: ${error.message}`);
   }
