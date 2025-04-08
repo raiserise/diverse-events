@@ -39,7 +39,10 @@ const Profile = () => {
         name: displayName,
       });
 
-      alert("Profile updated successfully!");
+      
+      const event = new CustomEvent("profileUpdated", { detail: { displayName } });
+      window.dispatchEvent(event);
+      alert("Profile updated successfully12!");
     } catch (error) {
       console.error("Error updating profile: ", error);
     }

@@ -92,6 +92,18 @@ const SideBar = () => {
         });
     }
   }, [user]);
+  
+  // handle when profile updated
+  useEffect(() => {
+    const handleProfileUpdate = (event) => {
+      setProfileName(event.detail.displayName);
+    };
+    window.addEventListener("profileUpdated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("profileUpdated", handleProfileUpdate);
+    };
+  }
+  , []);  
 
   const handleSignOut = () => {
     signOut(auth)
