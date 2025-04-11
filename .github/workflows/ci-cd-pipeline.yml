@@ -137,7 +137,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.14.0
         with:
           target: ${{ vars.PUBLIC_API_URL }}
-          token: ${{ secrets.ZAP_GITHUB_TOKEN }}
+          token: ${{ secrets.ZAP_REPORT_GITHUB_TOKEN }}
 
       - name: Upload DAST Reports
         uses: actions/upload-artifact@v4
