@@ -177,7 +177,7 @@ jobs:
 
       - name: Set CORS on Firebase Storage bucket
         run: |
-          gsutil cors set cors.json gs://diverseevents-af6ea.appspot.com
+          gsutil cors set cors.json gs://diverseevents-af6ea.firebasestorage.app
 
       - name: Install function dependencies
         run: npm ci
