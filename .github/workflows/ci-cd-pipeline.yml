@@ -161,12 +161,23 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools@latest
 
-      - name: Set Firebase Storage CORS
+      # - name: Set Firebase Storage CORS
+      #   run: |
+      #     pip install gsutil
+      #     echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIVERSEEVENTS_AF6EA }}' > key.json
+      #     gcloud auth activate-service-account --key-file=key.json
+      #     gsutil cors set cors.json gs://diverseevents-af6ea.firebasestorage.app
+
+      - name: Authenticate with GCP
         run: |
-          pip install gsutil
-          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIVERSEEVENTS_AF6EA }}' > key.json
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIVERSEEVENTS_AF6EA }}" > key.json
           gcloud auth activate-service-account --key-file=key.json
-          gsutil cors set cors.json gs://diverseevents-af6ea.firebasestorage.app
+          gcloud config set project diverseevents-af6ea
+          gcloud auth list
+
+      - name: Set CORS on Firebase Storage bucket
+        run: |
+          gsutil cors set cors.json gs://diverseevents-af6ea.appspot.com
 
       - name: Install function dependencies
         run: npm ci
