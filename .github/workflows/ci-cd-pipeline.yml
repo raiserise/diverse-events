@@ -161,6 +161,13 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools@latest
 
+      - name: Set Firebase Storage CORS
+        run: |
+          pip install gsutil
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIVERSEEVENTS_AF6EA }}' > key.json
+          gcloud auth activate-service-account --key-file=key.json
+          gsutil cors set cors.json gs://diverseevents-af6ea.firebasestorage.app
+
       - name: Install function dependencies
         run: npm ci
         working-directory: functions
