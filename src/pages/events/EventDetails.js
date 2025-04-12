@@ -37,11 +37,10 @@ function EventDetails() {
   const [user, setUser] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [cooldownRemaining, setCooldownRemaining] = useState(null);
-  const [privacy, setPrivacy] = useState(null);
   const [users, setUsers] = useState([]);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [invitedUsers, setInvitedUsers] = useState(null);
-
+  const [searchTerm, setSearchTerm] = useState("");
   // State for the edit modal and its form data
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState(null);
@@ -96,8 +95,6 @@ function EventDetails() {
             setError("Authentication required to view this private event.");
             return;
           }
-          setPrivacy(eventData.privacy);
-          setInvitedUsers(eventData.invitedUsers);
           const allowed =
             (eventData.organizers || []).includes(user.uid) ||
             (eventData.invitedUsers || []).includes(user.uid);
@@ -114,6 +111,7 @@ function EventDetails() {
             )
           );
           setOrganizers(orgs);
+          setInvitedUsers(eventData.invitedUsers);
         }
         if (eventData.participants?.length) {
           const parts = await Promise.all(
@@ -629,8 +627,7 @@ function EventDetails() {
       {/* Button Container */}
       <div className="fixed bottom-6 right-6 flex gap-4">
         {/* Invite Button for Organizers */}
-        {privacy === "private" &&
-          organizers.some((org) => org.id === user?.uid) && (
+        {organizers.some((org) => org.id === user?.uid) && (
             <button
               onClick={() => setIsInviteOpen(true)}
               className="bg-purple-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-purple-600 transition"
@@ -654,12 +651,23 @@ function EventDetails() {
         isOpen={isInviteOpen}
         onRequestClose={() => setIsInviteOpen(false)}
       >
-        <h2 className="text-lg font-bold">Invite Users</h2>
-        <ul className="max-h-full overflow-y-auto">
-          {" "}
-          {/* Make the list scrollable */}
+        <h2 className="text-lg font-bold mb-4">Invite Users</h2>
+
+        {/* Search Input */}
+        <input
+          type="text"
+          placeholder="Search users by name..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full p-2 mb-4 border rounded"
+        />
+
+        <ul className="max-h-[600px] overflow-y-auto">
           {users
-            .filter((u) => !event.organizers.includes(u.id)) // Exclude users who are organizers
+            .filter((u) => !event.organizers.includes(u.id))
+            .filter((u) =>
+              u.name?.toLowerCase().includes(searchTerm.toLowerCase())
+            )
             .map((u) => (
               <li
                 key={u.id}
