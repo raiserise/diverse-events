@@ -13,16 +13,12 @@ jest.mock("../../models/rsvpModel", () => ({
 jest.mock("../../models/notificationModel", () => ({
   createNotification: jest.fn(),
 }));
-jest.mock("../../models/inviteModel", () => ({
-  updateInviteStatus: jest.fn(),
-}));
 jest.mock("../../models/eventModel", () => ({
   getEventById: jest.fn(),
 }));
 
 const rsvpModel = require("../../models/rsvpModel");
 const notificationModel = require("../../models/notificationModel");
-const inviteModel = require("../../models/inviteModel");
 const eventModel = require("../../models/eventModel");
 
 // --- Helper to create a fake Express response object ---
@@ -56,9 +52,6 @@ describe("submitRSVP", () => {
     const fakeRSVP = { id: "rsvp1", eventId: "event1" };
     rsvpModel.createRSVP.mockResolvedValue(fakeRSVP);
 
-    // Simulate successful update of invite status.
-    inviteModel.updateInviteStatus.mockResolvedValue();
-
     // Fake event details; event creator to be notified for received RSVP.
     const fakeEvent = { id: "event1", creatorId: "creator1" };
     eventModel.getEventById.mockResolvedValue(fakeEvent);
@@ -76,8 +69,6 @@ describe("submitRSVP", () => {
       inviteId: "invite1",
       dietaryRequirements: "none",
     });
-    // If inviteId provided, updateInviteStatus should be called.
-    expect(inviteModel.updateInviteStatus).toHaveBeenCalledWith("invite1", "accepted");
 
     // Verify that event details are fetched.
     expect(eventModel.getEventById).toHaveBeenCalledWith("event1");
@@ -94,7 +85,8 @@ describe("submitRSVP", () => {
     expect(notificationModel.createNotification).toHaveBeenCalledWith({
       userId: "user1",
       type: "rsvp_confirmation",
-      message: "You have successfully RSVP'd as a guest/participant for the event.",
+      message:
+        "You have successfully RSVP'd as a guest/participant for the event.",
       relatedEventId: "event1",
     });
 
@@ -135,7 +127,6 @@ describe("submitRSVP", () => {
       inviteId: undefined,
       dietaryRequirements: "vegan",
     });
-    expect(inviteModel.updateInviteStatus).not.toHaveBeenCalled();
     expect(eventModel.getEventById).toHaveBeenCalledWith("event1");
 
     // Two notifications: one for event creator and one for the RSVP user.
@@ -148,7 +139,8 @@ describe("submitRSVP", () => {
     expect(notificationModel.createNotification).toHaveBeenNthCalledWith(2, {
       userId: "user1",
       type: "rsvp_confirmation",
-      message: "You have successfully RSVP'd as a guest/participant for the event.",
+      message:
+        "You have successfully RSVP'd as a guest/participant for the event.",
       relatedEventId: "event1",
     });
     expect(res.status).toHaveBeenCalledWith(201);
@@ -272,7 +264,11 @@ describe("updateRSVPStatus", () => {
 
     // Assert
     expect(rsvpModel.getRSVPById).toHaveBeenCalledWith("rsvp1");
-    expect(rsvpModel.updateRSVP).toHaveBeenCalledWith("rsvp1", "user1", "approved");
+    expect(rsvpModel.updateRSVP).toHaveBeenCalledWith(
+      "rsvp1",
+      "user1",
+      "approved"
+    );
 
     // Check that notification is created with the correct message for "approved" status.
     expect(notificationModel.createNotification).toHaveBeenCalledWith({
@@ -349,7 +345,10 @@ describe("getRSVPsByStatus", () => {
 
     // Assert
     expect(eventModel.getEventById).toHaveBeenCalledWith("event1");
-    expect(rsvpModel.getRSVPsByStatus).toHaveBeenCalledWith("event1", "pending");
+    expect(rsvpModel.getRSVPsByStatus).toHaveBeenCalledWith(
+      "event1",
+      "pending"
+    );
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ rsvps: fakeRSVPs });
   });
@@ -371,7 +370,9 @@ describe("getRSVPsByStatus", () => {
 
     // Assert
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: "Invalid RSVP status provided." });
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Invalid RSVP status provided.",
+    });
   });
 
   test("should return 403 if user is not authorized to view RSVPs", async () => {
@@ -391,7 +392,9 @@ describe("getRSVPsByStatus", () => {
 
     // Assert
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({ error: "Unauthorized to view RSVPs for this event." });
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Unauthorized to view RSVPs for this event.",
+    });
   });
 
   test("should return 500 if getRSVPsByStatus fails", async () => {

@@ -8,7 +8,6 @@ import Dashboard from "./pages/dashboard/Dashboard";
 import EventsPage from "./pages/events/Events";
 import MyEvents from "./pages/myevents/MyEvents";
 import EventDetails from "./pages/events/EventDetails";
-import Invites from "./pages/invite/Invites";
 import RSVP from "./pages/rsvp/RSVP";
 import Notifications from "./pages/notification/Notifications";
 import Profile from "./pages/profile/Profile";
@@ -27,7 +26,6 @@ const App = () => {
     { path: "/events", title: "Events", element: <EventsPage /> },
     { path: "/myevents", title: "My Events", element: <MyEvents /> },
     { path: "/events/:id", title: "Event Details", element: <EventDetails /> },
-    { path: "/invites", title: "Invites", element: <Invites /> },
     { path: "/rsvp", title: "RSVP", element: <RSVP /> },
     { path: "/profile", title: "Profile", element: <Profile /> },
     {
