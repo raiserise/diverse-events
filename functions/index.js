@@ -28,10 +28,10 @@ app.use("/", notificationRoutes);
 
 // // Local development: Run Express normally if not in Firebase Functions
 // if (process.env.NODE_ENV !== "prod") {
-// const port = process.env.SERVER_PORT || 8080;
-// app.listen(port, () => {
-//   console.log(`Server running at http://localhost:${port}`);
-// });
+const port = process.env.SERVER_PORT || 8080;
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});
 // }
 
 // Firebase Function (V2) - Expose Express API

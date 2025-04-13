@@ -140,6 +140,22 @@ const getEventStats = async (req, res) => {
   }
 };
 
+// POST /events/batch
+const getEventsByIds = async (req, res) => {
+  try {
+    const {ids} = req.body; // expect: { ids: ["event1", "event2"] }
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({error: "ids must be a non-empty array"});
+    }
+
+    const events = await eventModel.getEventsByIds(ids); // Add this in model
+    res.status(200).json({events});
+  } catch (error) {
+    res.status(500).json({error: error.message});
+  }
+};
+
 module.exports = {
   createEvent,
   getUserEvents,
@@ -149,4 +165,5 @@ module.exports = {
   getEventDetails,
   getEventStats,
   getAllEvents,
+  getEventsByIds,
 };

@@ -41,6 +41,7 @@ function EventDetails() {
   const [users, setUsers] = useState([]);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [invitedUsers, setInvitedUsers] = useState(null);
+  const [canRSVP, setCanRSVP] = useState(false);
 
   // State for the edit modal and its form data
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -71,9 +72,9 @@ function EventDetails() {
     return () => unsubscribe();
   }, [auth]);
 
-  // Fetch event data with authentication
   useEffect(() => {
-    if (!user) return; // Wait until auth state is determined
+    if (!user) return;
+
     const fetchEvent = async () => {
       try {
         let eventData;
@@ -86,18 +87,21 @@ function EventDetails() {
             throw err;
           }
         }
+
         if (!eventData) {
           setError("Event not found.");
           return;
         }
-        // Privacy Check: If the event is private, ensure the user is allowed to view it.
+
         if (eventData.privacy === "private") {
           if (!user) {
             setError("Authentication required to view this private event.");
             return;
           }
+
           setPrivacy(eventData.privacy);
           setInvitedUsers(eventData.invitedUsers);
+
           const allowed =
             (eventData.organizers || []).includes(user.uid) ||
             (eventData.invitedUsers || []).includes(user.uid);
@@ -106,7 +110,9 @@ function EventDetails() {
             return;
           }
         }
+
         setEvent({ id, ...eventData });
+
         if (eventData.organizers?.length) {
           const orgs = await Promise.all(
             eventData.organizers.map((orgId) =>
@@ -115,6 +121,7 @@ function EventDetails() {
           );
           setOrganizers(orgs);
         }
+
         if (eventData.participants?.length) {
           const parts = await Promise.all(
             eventData.participants.map((participantId) =>
@@ -124,44 +131,75 @@ function EventDetails() {
           setParticipants(parts);
         }
       } catch (err) {
+        console.error("❌ Error fetching event:", err);
         setError("Error loading event details");
       } finally {
         setLoading(false);
       }
     };
 
+    fetchEvent();
+  }, [user, id]);
+
+  useEffect(() => {
+    if (!user || !event) return;
+
     const checkRSVP = async () => {
       try {
+        console.log("Checking RSVP eligibility...");
         const response = await getDataById("/rsvp/check", id, true);
+
+        if (
+          event?.maxParticipants &&
+          event?.participants?.length >= event.maxParticipants
+        ) {
+          console.log("Event is full.");
+          setCanRSVP(false);
+          setIsRSVP(false);
+          //setError("Event is full. RSVP is not allowed.");
+          return;
+        }
+
         if (response.exists && response.status === "cancelled") {
           const lastCancelledAt = parseFirestoreTimestamp(
             response.lastCancelledAt
           );
           const cooldownOver = Date.now() - lastCancelledAt >= 30 * 60 * 1000;
           if (!cooldownOver) {
-            setIsRSVP(true);
             const remainingTime = Math.ceil(
               (30 * 60 * 1000 - (Date.now() - lastCancelledAt)) / 1000
             );
+            console.log(
+              "RSVP cooldown active, remaining:",
+              remainingTime,
+              "seconds"
+            );
             setCooldownRemaining(remainingTime);
+            setCanRSVP(false);
             return;
           } else {
+            setCanRSVP(true);
             setIsRSVP(false);
             return;
           }
         } else if (response.exists) {
           setIsRSVP(true);
+          setCanRSVP(false);
         } else {
           setIsRSVP(false);
+          setCanRSVP(true);
         }
       } catch (error) {
         console.error("RSVP check failed:", error);
       }
     };
 
-    fetchEvent();
-    if (user) checkRSVP();
-  }, [user, id]);
+    checkRSVP();
+  }, [user, event, id]);
+
+  const isEventFull =
+    event?.maxParticipants &&
+    event?.participants?.length >= event.maxParticipants;
 
   useEffect(() => {
     let interval;
@@ -170,6 +208,7 @@ function EventDetails() {
         setCooldownRemaining((prev) => {
           if (prev <= 1) {
             clearInterval(interval);
+            setCanRSVP(true); // 👈 enable RSVP
             return 0;
           }
           return prev - 1;
@@ -181,23 +220,42 @@ function EventDetails() {
 
   const handleRSVP = async () => {
     if (!event || isRSVP || submitting) return;
+
     try {
       setSubmitting(true);
+
+      // 👇 Check if event is full first
+      if (
+        event.maxParticipants &&
+        event.participants?.length >= event.maxParticipants
+      ) {
+        toast.error("Event is full. RSVP is not allowed.");
+        setSubmitting(false);
+        return;
+      }
+
       const response = await getDataById("/rsvp/check", id, true);
+
+      // 🕒 If RSVP exists and was cancelled, check for cooldown
       if (response.exists) {
         const { status, lastCancelledAt } = response;
+
         if (status === "cancelled") {
           const lastCancelledTime = parseFirestoreTimestamp(lastCancelledAt);
           const cooldownDuration = 30 * 60 * 1000;
-          if (Date.now() - lastCancelledTime < cooldownDuration) {
+
+          const timeDiff = Date.now() - lastCancelledTime;
+          if (timeDiff < cooldownDuration) {
             const remainingTime = Math.ceil(
-              (cooldownDuration - (Date.now() - lastCancelledTime)) / 60000
+              (cooldownDuration - timeDiff) / 60000
             );
             toast.error(`You can RSVP again in ${remainingTime} minutes.`);
             setSubmitting(false);
             return;
           }
         }
+
+        // ✅ Patch existing RSVP status to 'pending'
         await patchData(
           `/rsvp/${response.rsvpId}/status`,
           { status: "pending" },
@@ -206,6 +264,7 @@ function EventDetails() {
         setIsRSVP(true);
         toast.success("RSVP updated successfully!");
       } else {
+        // ➕ Create new RSVP
         await addData(
           "/rsvp",
           {
@@ -219,6 +278,9 @@ function EventDetails() {
         setIsRSVP(true);
         toast.success("RSVP created successfully!");
       }
+
+      // ✅ If you're using `canRSVP` as a state
+      setCanRSVP(false);
     } catch (error) {
       console.error("RSVP error:", error);
       toast.error("RSVP failed. Please try again.");
@@ -227,7 +289,7 @@ function EventDetails() {
     }
   };
 
-  const canRSVP = !isRSVP && !submitting && cooldownRemaining <= 0;
+  //const canRSVP = !isRSVP && !submitting && cooldownRemaining <= 0;
 
   const handleEditClick = () => {
     setEditFormData({
@@ -329,6 +391,11 @@ function EventDetails() {
       toast.error("Error updating event. Please try again.");
     }
   };
+
+  const [showAll, setShowAll] = useState(false);
+  const visibleParticipants = showAll
+    ? participants
+    : participants.slice(0, 10);
 
   if (loading)
     return (
@@ -561,23 +628,35 @@ function EventDetails() {
         </div>
       </div>
 
-      {/* Participants Section */}
-      {participants.length > 0 ? (
-        <ul className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {participants.map((participant) => (
-            <li
-              key={participant.id}
-              className="bg-gray-100 p-4 rounded-lg text-center hover:bg-gray-200 transition"
+      {visibleParticipants.length > 0 ? (
+        <>
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            List of Participants
+          </h3>
+          <ul className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {visibleParticipants.map((participant) => (
+              <li
+                key={participant.id}
+                className="bg-gray-100 p-4 rounded-lg text-center hover:bg-gray-200 transition"
+              >
+                <p className="font-medium text-gray-700">
+                  {participant.name !== "Unknown"
+                    ? participant.name
+                    : "Name not available"}
+                </p>
+                <p className="text-sm text-gray-600">Confirmed</p>
+              </li>
+            ))}
+          </ul>
+          {participants.length > 10 && (
+            <button
+              className="mt-4 text-blue-500 hover:underline text-sm"
+              onClick={() => setShowAll((prev) => !prev)}
             >
-              <p className="font-medium text-gray-700">
-                {participant.name !== "Unknown"
-                  ? participant.name
-                  : "Name not available"}
-              </p>
-              <p className="text-sm text-gray-600">Confirmed</p>
-            </li>
-          ))}
-        </ul>
+              {showAll ? "Show Less" : `Show All (${participants.length})`}
+            </button>
+          )}
+        </>
       ) : (
         <div>
           <h3 className="text-xl font-semibold text-gray-800 mb-4">
@@ -597,24 +676,28 @@ function EventDetails() {
             <>
               <button
                 onClick={handleRSVP}
-                disabled={submitting || (!canRSVP && !isRSVP)}
+                disabled={submitting || (!canRSVP && !isRSVP) || isEventFull}
                 className={`w-full px-6 py-3 rounded-lg transition duration-200 ${
                   isRSVP
                     ? "bg-green-500 cursor-default"
-                    : canRSVP
-                      ? "bg-blue-600 hover:bg-blue-700"
-                      : "bg-gray-400 cursor-not-allowed"
+                    : isEventFull
+                      ? "bg-red-400 cursor-not-allowed"
+                      : canRSVP
+                        ? "bg-blue-400 hover:bg-blue-500"
+                        : "bg-gray-400 cursor-not-allowed"
                 }`}
               >
                 {submitting
                   ? "Submitting..."
                   : isRSVP
                     ? "RSVP Confirmed"
-                    : canRSVP
-                      ? "RSVP Now"
-                      : `You can RSVP again in ${Math.floor(cooldownRemaining / 60)}m ${
-                          cooldownRemaining % 60
-                        }s`}
+                    : isEventFull
+                      ? "Event is full"
+                      : canRSVP
+                        ? "RSVP Now"
+                        : `You can RSVP again in ${Math.floor(cooldownRemaining / 60)}m ${
+                            cooldownRemaining % 60
+                          }s`}
               </button>
               {!canRSVP && cooldownRemaining > 0 && isRSVP && (
                 <p className="text-red-500 text-center text-sm mt-2">
