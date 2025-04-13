@@ -445,12 +445,13 @@ describe("getRSVPsByUser", () => {
     const res = createFakeRes();
     const errorMessage = "User RSVPs error";
     rsvpModel.getUserRSVPs.mockRejectedValue(new Error(errorMessage));
-
+  
     // Act
     await rsvpController.getRSVPsByUser(req, res);
-
+  
     // Assert
     expect(res.status).toHaveBeenCalledWith(500);
+    // Expect the exact error from the mock, without the prefix.
     expect(res.json).toHaveBeenCalledWith({ error: errorMessage });
-  });
+  });  
 });

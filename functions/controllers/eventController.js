@@ -1,5 +1,4 @@
 const eventModel = require("../models/eventModel");
-const inviteModel = require("../models/inviteModel");
 const rsvpModel = require("../models/rsvpModel");
 
 const createEvent = async (req, res) => {
@@ -8,10 +7,6 @@ const createEvent = async (req, res) => {
     data.creatorId = req.user.user_id; // Assuming authenticated user
     const event = await eventModel.createEvent(data);
 
-    // Create invites if specified
-    if (data.invites && data.invites.length > 0) {
-      await inviteModel.createInvite(event.id, data.invites);
-    }
 
     res.status(201).json(event);
   } catch (error) {
@@ -122,13 +117,11 @@ const getEventStats = async (req, res) => {
       return res.status(403).json({error: "Not authorized"});
     }
 
-    // Fetch invites and RSVPs using their respective models
-    const invites = await inviteModel.getInvitesByEvent(eventId);
+    // Fetch RSVPs using their respective models
     const rsvps = await rsvpModel.getRSVPsByEvent(eventId);
 
     // Calculate stats
     const stats = {
-      totalInvites: invites.length,
       totalRSVPs: rsvps.length,
       attendees: rsvpModel.countRSVPsByStatus(rsvps, "approved"),
       declined: rsvpModel.countRSVPsByStatus(rsvps, "declined"),
