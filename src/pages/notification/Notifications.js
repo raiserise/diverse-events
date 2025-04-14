@@ -42,7 +42,7 @@ const Notifications = () => {
         rsvpTypes.includes(notification.type) &&
         notification.relatedEventId
       ) {
-        navigate(`/rsvp`); 
+        navigate(`/rsvp`);
       } else if (notification.relatedEventId) {
         navigate(`/events/${notification.relatedEventId}`);
       }
@@ -119,7 +119,11 @@ const Notifications = () => {
                   📅{" "}
                   {new Date(
                     notification.createdAt._seconds * 1000
-                  ).toLocaleDateString()}
+                  ).toLocaleDateString()}{" "}
+                  🕒{" "}
+                  {new Date(
+                    notification.createdAt._seconds * 1000
+                  ).toLocaleTimeString()}{" "}
                 </small>
               </div>
             );
