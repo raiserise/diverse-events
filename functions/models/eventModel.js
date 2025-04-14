@@ -172,6 +172,15 @@ const deleteEvent = async (eventId) => {
   }
 };
 
+const getEventsByIds = async (ids) => {
+  const eventsRef = db.collection("events");
+  const eventDocs = await Promise.all(ids.map((id) => eventsRef.doc(id).get()));
+
+  return eventDocs
+      .filter((doc) => doc.exists)
+      .map((doc) => ({id: doc.id, ...doc.data()}));
+};
+
 module.exports = {
   createEvent,
   getEventsByUser,
@@ -180,4 +189,5 @@ module.exports = {
   getEventById,
   deleteEvent,
   getAllEvents,
+  getEventsByIds,
 };

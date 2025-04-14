@@ -55,4 +55,27 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = {addUser, getUsers, getUserById, updateUser, deleteUser};
+// POST /users/batch
+const getUsersByIds = async (req, res) => {
+  try {
+    const {ids} = req.body; // expect: { ids: ["uid1", "uid2"] }
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({error: "ids must be a non-empty array"});
+    }
+
+    const users = await userModel.getUsersByIds(ids); // You'll add this model function
+    res.status(200).json({users});
+  } catch (error) {
+    res.status(500).json({error: error.message});
+  }
+};
+
+module.exports = {
+  addUser,
+  getUsers,
+  getUserById,
+  updateUser,
+  deleteUser,
+  getUsersByIds,
+};

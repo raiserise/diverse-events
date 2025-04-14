@@ -1,5 +1,4 @@
 const eventModel = require("../models/eventModel");
-const inviteModel = require("../models/inviteModel");
 const rsvpModel = require("../models/rsvpModel");
 
 const createEvent = async (req, res) => {
@@ -8,10 +7,6 @@ const createEvent = async (req, res) => {
     data.creatorId = req.user.user_id; // Assuming authenticated user
     const event = await eventModel.createEvent(data);
 
-    // Create invites if specified
-    if (data.invites && data.invites.length > 0) {
-      await inviteModel.createInvite(event.id, data.invites);
-    }
 
     res.status(201).json(event);
   } catch (error) {
@@ -122,19 +117,33 @@ const getEventStats = async (req, res) => {
       return res.status(403).json({error: "Not authorized"});
     }
 
-    // Fetch invites and RSVPs using their respective models
-    const invites = await inviteModel.getInvitesByEvent(eventId);
+    // Fetch RSVPs using their respective models
     const rsvps = await rsvpModel.getRSVPsByEvent(eventId);
 
     // Calculate stats
     const stats = {
-      totalInvites: invites.length,
       totalRSVPs: rsvps.length,
       attendees: rsvpModel.countRSVPsByStatus(rsvps, "approved"),
       declined: rsvpModel.countRSVPsByStatus(rsvps, "declined"),
     };
 
     res.status(200).json(stats);
+  } catch (error) {
+    res.status(500).json({error: error.message});
+  }
+};
+
+// POST /events/batch
+const getEventsByIds = async (req, res) => {
+  try {
+    const {ids} = req.body; // expect: { ids: ["event1", "event2"] }
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({error: "ids must be a non-empty array"});
+    }
+
+    const events = await eventModel.getEventsByIds(ids); // Add this in model
+    res.status(200).json({events});
   } catch (error) {
     res.status(500).json({error: error.message});
   }
@@ -149,4 +158,5 @@ module.exports = {
   getEventDetails,
   getEventStats,
   getAllEvents,
+  getEventsByIds,
 };

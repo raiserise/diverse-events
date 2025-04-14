@@ -1,5 +1,6 @@
 const {db} = require("../config/firebase");
 const admin = require("firebase-admin");
+// const { PendingState, ApprovedState } = require("../states");
 
 const createRSVP = async (eventId, userId, data) => {
   const rsvpData = {
@@ -201,13 +202,24 @@ const getUserRSVPs = async (userId) => {
 
     if (snapshot.empty) {
       console.log(`No RSVPs found for user: ${userId}`);
+      return [];
     }
 
-    return snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}));
+    const rsvps = snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}));
+
+    // Sort by lastCancelledAt (if exists), otherwise by createdAt
+    rsvps.sort((a, b) => {
+      const aTime = a.lastCancelledAt?.toMillis?.() || a.createdAt.toMillis?.();
+      const bTime = b.lastCancelledAt?.toMillis?.() || b.createdAt.toMillis?.();
+      return bTime - aTime; // Descending
+    });
+
+    return rsvps;
   } catch (error) {
     throw new Error(`Error fetching user RSVPs: ${error.message}`);
   }
 };
+
 module.exports = {
   createRSVP,
   updateRSVP,

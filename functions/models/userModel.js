@@ -51,4 +51,20 @@ const deleteUser = async (id) => {
   }
 };
 
-module.exports = {addUser, getUsers, getUserById, updateUser, deleteUser};
+const getUsersByIds = async (ids) => {
+  const usersRef = db.collection("users");
+  const userDocs = await Promise.all(ids.map((id) => usersRef.doc(id).get()));
+
+  return userDocs
+      .filter((doc) => doc.exists)
+      .map((doc) => ({id: doc.id, ...doc.data()}));
+};
+
+module.exports = {
+  addUser,
+  getUsers,
+  getUserById,
+  updateUser,
+  deleteUser,
+  getUsersByIds,
+};

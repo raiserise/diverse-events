@@ -26,4 +26,10 @@ router.get(
     eventController.getEventStats,
 );
 
+router.post(
+    "/events/batch",
+    authMiddleware.auth,
+    eventController.getEventsByIds,
+);
+
 module.exports = router;
