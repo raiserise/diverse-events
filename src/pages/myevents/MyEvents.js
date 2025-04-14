@@ -1,11 +1,11 @@
-// src/pages/MyEvents.js
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthProvider";
-import { getFirestore, collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { getFirestore, collection, query, where, addDoc, serverTimestamp } from "firebase/firestore";
 import { Link } from "react-router-dom";
 import FirebaseImage from "../../components/FirebaseImage";
 import EventModal from "../../components/EventModal";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { onSnapshot } from "firebase/firestore";
 
 const DEFAULT_IMAGE = "gs://diverseevents-af6ea.firebasestorage.app/noimage.jpg";
 
@@ -73,9 +73,15 @@ function MyEvents() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) return;
+    
+    // Convert dates to timestamps
     const startDateTimestamp = formData.startDate ? new Date(formData.startDate) : null;
     const endDateTimestamp = formData.endDate ? new Date(formData.endDate) : null;
+  
+    // Default featured image
     let featuredImageUrl = DEFAULT_IMAGE;
+  
+    // Handle image upload
     if (imageFile) {
       try {
         featuredImageUrl = await uploadImage(imageFile);
@@ -84,6 +90,8 @@ function MyEvents() {
         featuredImageUrl = DEFAULT_IMAGE;
       }
     }
+  
+    // Prepare the event data
     const newEventData = {
       ...formData,
       category: formData.category.split(",").map((cat) => cat.trim()),
@@ -95,15 +103,40 @@ function MyEvents() {
       startDate: startDateTimestamp,
       endDate: endDateTimestamp,
     };
-
+  
     const db = getFirestore();
     try {
+      // Add the event to Firestore
       await addDoc(collection(db, "events"), {
         ...newEventData,
         createdAt: serverTimestamp(),
       });
+      // Close the modal after submitting the form
       setIsModalOpen(false);
-      // Optionally reload the page or update state
+      
+      // Reset the form to its initial state
+      setFormData({
+        title: "",
+        description: "",
+        category: "",
+        location: "",
+        startDate: "",
+        endDate: "",
+        duration: "",
+        language: "English",
+        acceptsRSVP: false,
+        featuredImage: "",
+        maxParticipants: "",
+        privacy: "public",
+        format: "Physical",
+        terms: "",
+        status: "active",
+        inviteLink: "",
+      });
+      
+      // Clear the selected image file
+      setImageFile(null);
+      
     } catch (error) {
       console.error("Error adding document:", error);
     }
@@ -114,25 +147,26 @@ function MyEvents() {
       setLoading(false);
       return;
     }
-    const fetchMyEvents = async () => {
-      try {
-        const db = getFirestore();
-        const eventsRef = collection(db, "events");
-        const q = query(eventsRef, where("organizers", "array-contains", user.uid));
-        const querySnapshot = await getDocs(q);
-        const eventsList = [];
-        querySnapshot.forEach((doc) => {
-          eventsList.push({ id: doc.id, ...doc.data() });
-        });
-        setMyEvents(eventsList);
-      } catch (err) {
-        console.error("Error fetching events:", err);
-        setError("Failed to fetch your events.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchMyEvents();
+
+    const db = getFirestore();
+    const eventsRef = collection(db, "events");
+    const q = query(eventsRef, where("organizers", "array-contains", user.uid));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const eventsList = [];
+      querySnapshot.forEach((doc) => {
+        eventsList.push({ id: doc.id, ...doc.data() });
+      });
+      setMyEvents(eventsList);
+      setLoading(false);
+    }, (err) => {
+      console.error("Error with real-time updates:", err);
+      setError("Failed to fetch your events.");
+      setLoading(false);
+    });
+
+    // Clean up the listener when the component unmounts
+    return () => unsubscribe();
   }, [user]);
 
   if (loading) return <p className="text-center p-6">Loading...</p>;
