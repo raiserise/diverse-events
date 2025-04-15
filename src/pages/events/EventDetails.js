@@ -1,7 +1,7 @@
 // src/pages/events/EventDetails.js
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getDataById, addData, patchData } from "../../api/apiService";
+import { getDataById, addData } from "../../api/apiService";
 import FirebaseImage from "../../components/FirebaseImage";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -227,56 +227,43 @@ function EventDetails() {
         event.participants?.length >= event.maxParticipants
       ) {
         toast.error("Event is full. RSVP is not allowed.");
-        setSubmitting(false);
         return;
       }
 
+      // 👀 Check if RSVP exists to handle cooldown
       const response = await getDataById("/rsvp/check", id, true);
+      console.log("Check rsvp", response);
 
-      // 🕒 If RSVP exists and was cancelled, check for cooldown
-      if (response.exists) {
-        const { status, lastCancelledAt } = response;
+      if (response.exists && response.status === "cancelled") {
+        const lastCancelledTime = parseFirestoreTimestamp(
+          response.lastCancelledAt
+        );
+        const cooldownDuration = 30 * 60 * 1000;
+        const timeDiff = Date.now() - lastCancelledTime;
 
-        if (status === "cancelled") {
-          const lastCancelledTime = parseFirestoreTimestamp(lastCancelledAt);
-          const cooldownDuration = 30 * 60 * 1000;
-
-          const timeDiff = Date.now() - lastCancelledTime;
-          if (timeDiff < cooldownDuration) {
-            const remainingTime = Math.ceil(
-              (cooldownDuration - timeDiff) / 60000
-            );
-            toast.error(`You can RSVP again in ${remainingTime} minutes.`);
-            setSubmitting(false);
-            return;
-          }
+        if (timeDiff < cooldownDuration) {
+          const remainingTime = Math.ceil(
+            (cooldownDuration - timeDiff) / 60000
+          );
+          toast.error(`You can RSVP again in ${remainingTime} minutes.`);
+          return;
         }
-
-        // ✅ Patch existing RSVP status to 'pending'
-        await patchData(
-          `/rsvp/${response.rsvpId}/status`,
-          { status: "pending" },
-          true
-        );
-        setIsRSVP(true);
-        toast.success("RSVP updated successfully!");
-      } else {
-        // ➕ Create new RSVP
-        await addData(
-          "/rsvp",
-          {
-            eventId: event.id,
-            organizers: event.organizers,
-            dietaryRequirements: "",
-            createdAt: new Date(),
-          },
-          true
-        );
-        setIsRSVP(true);
-        toast.success("RSVP created successfully!");
       }
 
-      // ✅ If you're using `canRSVP` as a state
+      // 👇 Always use addData — backend handles create vs reapply
+      await addData(
+        "/rsvp",
+        {
+          eventId: event.id,
+          organizers: event.organizers,
+          dietaryRequirements: "",
+          createdAt: new Date(), // Optional, server also sets timestamp
+        },
+        true
+      );
+
+      setIsRSVP(true);
+      toast.success("RSVP successful!");
       setCanRSVP(false);
     } catch (error) {
       console.error("RSVP error:", error);

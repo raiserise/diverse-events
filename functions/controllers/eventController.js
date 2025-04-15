@@ -7,7 +7,6 @@ const createEvent = async (req, res) => {
     data.creatorId = req.user.user_id; // Assuming authenticated user
     const event = await eventModel.createEvent(data);
 
-
     res.status(201).json(event);
   } catch (error) {
     res.status(500).json({error: error.message});
@@ -117,6 +116,7 @@ const getEventStats = async (req, res) => {
       return res.status(403).json({error: "Not authorized"});
     }
 
+    // Fetch RSVPs using their respective models
     // Fetch RSVPs using their respective models
     const rsvps = await rsvpModel.getRSVPsByEvent(eventId);
 

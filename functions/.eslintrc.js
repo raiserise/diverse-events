@@ -25,6 +25,7 @@ module.exports = {
         ignoreRegExpLiterals: true, // Ignore regex patterns
       },
     ],
+    "require-jsdoc": "off",
   },
   overrides: [
     {

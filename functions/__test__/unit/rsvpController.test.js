@@ -44,16 +44,16 @@ describe("submitRSVP", () => {
         dietaryRequirements: "none",
         organizers: ["org1", "org2"],
       },
-      user: { user_id: "user1", email: "user1@example.com" },
+      user: {user_id: "user1", email: "user1@example.com"},
     };
     const res = createFakeRes();
 
     // Fake RSVP returned from rsvpModel.createRSVP
-    const fakeRSVP = { id: "rsvp1", eventId: "event1" };
+    const fakeRSVP = {id: "rsvp1", eventId: "event1"};
     rsvpModel.createRSVP.mockResolvedValue(fakeRSVP);
 
     // Fake event details; event creator to be notified for received RSVP.
-    const fakeEvent = { id: "event1", creatorId: "creator1" };
+    const fakeEvent = {id: "event1", creatorId: "creator1"};
     eventModel.getEventById.mockResolvedValue(fakeEvent);
 
     // Simulate notifications: both for event creator and the RSVP user.
@@ -103,17 +103,17 @@ describe("submitRSVP", () => {
         dietaryRequirements: "vegan",
         organizers: ["org1"],
       },
-      user: { user_id: "user1", email: "user1@example.com" },
+      user: {user_id: "user1", email: "user1@example.com"},
     };
     const res = createFakeRes();
 
     // Fake RSVP returned from createRSVP.
-    const fakeRSVP = { id: "rsvp2", eventId: "event1" };
+    const fakeRSVP = {id: "rsvp2", eventId: "event1"};
     rsvpModel.createRSVP.mockResolvedValue(fakeRSVP);
 
     // Simulate no invite update call since inviteId is undefined.
     // Fake event details.
-    const fakeEvent = { id: "event1", creatorId: "creator1" };
+    const fakeEvent = {id: "event1", creatorId: "creator1"};
     eventModel.getEventById.mockResolvedValue(fakeEvent);
 
     notificationModel.createNotification.mockResolvedValue();
@@ -150,8 +150,8 @@ describe("submitRSVP", () => {
   test("should return 400 if submitting RSVP fails", async () => {
     // Arrange
     const req = {
-      body: { eventId: "event1" },
-      user: { user_id: "user1", email: "user1@example.com" },
+      body: {eventId: "event1"},
+      user: {user_id: "user1", email: "user1@example.com"},
     };
     const res = createFakeRes();
     const errorMessage = "RSVP submission failed";
@@ -162,7 +162,7 @@ describe("submitRSVP", () => {
 
     // Assert
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: errorMessage });
+    expect(res.json).toHaveBeenCalledWith({error: errorMessage});
   });
 });
 
@@ -173,8 +173,8 @@ describe("checkRSVP", () => {
   test("should return exists false if RSVP is not found", async () => {
     // Arrange
     const req = {
-      params: { eventId: "event1" },
-      user: { user_id: "user1" },
+      params: {eventId: "event1"},
+      user: {user_id: "user1"},
     };
     const res = createFakeRes();
 
@@ -187,14 +187,14 @@ describe("checkRSVP", () => {
     // Assert
     expect(rsvpModel.findRSVP).toHaveBeenCalledWith("event1", "user1");
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ exists: false });
+    expect(res.json).toHaveBeenCalledWith({exists: false});
   });
 
   test("should return RSVP details if found", async () => {
     // Arrange
     const req = {
-      params: { eventId: "event1" },
-      user: { user_id: "user1" },
+      params: {eventId: "event1"},
+      user: {user_id: "user1"},
     };
     const res = createFakeRes();
     const fakeRSVP = {
@@ -221,8 +221,8 @@ describe("checkRSVP", () => {
   test("should return 500 if checkRSVP fails", async () => {
     // Arrange
     const req = {
-      params: { eventId: "event1" },
-      user: { user_id: "user1" },
+      params: {eventId: "event1"},
+      user: {user_id: "user1"},
     };
     const res = createFakeRes();
     const errorMessage = "RSVP lookup error";
@@ -233,7 +233,7 @@ describe("checkRSVP", () => {
 
     // Assert
     expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith({ error: errorMessage });
+    expect(res.json).toHaveBeenCalledWith({error: errorMessage});
   });
 });
 
@@ -244,13 +244,13 @@ describe("updateRSVPStatus", () => {
   test("should update the RSVP status and notify the user", async () => {
     // Arrange
     const req = {
-      params: { rsvpId: "rsvp1" },
-      body: { status: "approved" },
-      user: { user_id: "user1" },
+      params: {rsvpId: "rsvp1"},
+      body: {status: "approved"},
+      user: {user_id: "user1"},
     };
     const res = createFakeRes();
-    const fakeRSVPData = { id: "rsvp1", eventId: "event1", status: "pending" };
-    const updatedRSVP = { id: "rsvp1", status: "approved" };
+    const fakeRSVPData = {id: "rsvp1", eventId: "event1", status: "pending"};
+    const updatedRSVP = {id: "rsvp1", status: "approved"};
 
     // Simulate fetching RSVP details.
     rsvpModel.getRSVPById.mockResolvedValue(fakeRSVPData);
@@ -265,9 +265,9 @@ describe("updateRSVPStatus", () => {
     // Assert
     expect(rsvpModel.getRSVPById).toHaveBeenCalledWith("rsvp1");
     expect(rsvpModel.updateRSVP).toHaveBeenCalledWith(
-      "rsvp1",
-      "user1",
-      "approved"
+        "rsvp1",
+        "user1",
+        "approved",
     );
 
     // Check that notification is created with the correct message for "approved" status.
@@ -285,9 +285,9 @@ describe("updateRSVPStatus", () => {
   test("should return 404 if RSVP not found", async () => {
     // Arrange
     const req = {
-      params: { rsvpId: "rsvp1" },
-      body: { status: "approved" },
-      user: { user_id: "user1" },
+      params: {rsvpId: "rsvp1"},
+      body: {status: "approved"},
+      user: {user_id: "user1"},
     };
     const res = createFakeRes();
     rsvpModel.getRSVPById.mockResolvedValue(null);
@@ -297,19 +297,19 @@ describe("updateRSVPStatus", () => {
 
     // Assert
     expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.json).toHaveBeenCalledWith({ error: "RSVP not found." });
+    expect(res.json).toHaveBeenCalledWith({error: "RSVP not found."});
   });
 
   test("should return 400 if updateRSVPStatus fails", async () => {
     // Arrange
     const req = {
-      params: { rsvpId: "rsvp1" },
-      body: { status: "approved" },
-      user: { user_id: "user1" },
+      params: {rsvpId: "rsvp1"},
+      body: {status: "approved"},
+      user: {user_id: "user1"},
     };
     const res = createFakeRes();
     const errorMessage = "Update failed";
-    const fakeRSVPData = { id: "rsvp1", eventId: "event1", status: "pending" };
+    const fakeRSVPData = {id: "rsvp1", eventId: "event1", status: "pending"};
     rsvpModel.getRSVPById.mockResolvedValue(fakeRSVPData);
     rsvpModel.updateRSVP.mockRejectedValue(new Error(errorMessage));
 
@@ -318,7 +318,7 @@ describe("updateRSVPStatus", () => {
 
     // Assert
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: errorMessage });
+    expect(res.json).toHaveBeenCalledWith({error: errorMessage});
   });
 });
 
@@ -329,15 +329,15 @@ describe("getRSVPsByStatus", () => {
   test("should return RSVPs for a valid event if user is authorized", async () => {
     // Arrange
     const req = {
-      params: { eventId: "event1" },
-      query: { status: "pending" },
-      user: { user_id: "organizer1" },
+      params: {eventId: "event1"},
+      query: {status: "pending"},
+      user: {user_id: "organizer1"},
     };
     const res = createFakeRes();
     // Event belongs to the organizer.
-    const fakeEvent = { id: "event1", creatorId: "organizer1" };
+    const fakeEvent = {id: "event1", creatorId: "organizer1"};
     eventModel.getEventById.mockResolvedValue(fakeEvent);
-    const fakeRSVPs = [{ id: "rsvp1", status: "pending" }];
+    const fakeRSVPs = [{id: "rsvp1", status: "pending"}];
     rsvpModel.getRSVPsByStatus.mockResolvedValue(fakeRSVPs);
 
     // Act
@@ -346,23 +346,23 @@ describe("getRSVPsByStatus", () => {
     // Assert
     expect(eventModel.getEventById).toHaveBeenCalledWith("event1");
     expect(rsvpModel.getRSVPsByStatus).toHaveBeenCalledWith(
-      "event1",
-      "pending"
+        "event1",
+        "pending",
     );
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ rsvps: fakeRSVPs });
+    expect(res.json).toHaveBeenCalledWith({rsvps: fakeRSVPs});
   });
 
   test("should return 400 for invalid RSVP status filter", async () => {
     // Arrange
     const req = {
-      params: { eventId: "event1" },
-      query: { status: "invalidStatus" },
-      user: { user_id: "organizer1" },
+      params: {eventId: "event1"},
+      query: {status: "invalidStatus"},
+      user: {user_id: "organizer1"},
     };
     const res = createFakeRes();
     // Even if event exists, the filter is invalid.
-    const fakeEvent = { id: "event1", creatorId: "organizer1" };
+    const fakeEvent = {id: "event1", creatorId: "organizer1"};
     eventModel.getEventById.mockResolvedValue(fakeEvent);
 
     // Act
@@ -378,13 +378,13 @@ describe("getRSVPsByStatus", () => {
   test("should return 403 if user is not authorized to view RSVPs", async () => {
     // Arrange
     const req = {
-      params: { eventId: "event1" },
+      params: {eventId: "event1"},
       query: {},
-      user: { user_id: "user1" },
+      user: {user_id: "user1"},
     };
     const res = createFakeRes();
     // Event exists but is owned by someone else.
-    const fakeEvent = { id: "event1", creatorId: "organizer1" };
+    const fakeEvent = {id: "event1", creatorId: "organizer1"};
     eventModel.getEventById.mockResolvedValue(fakeEvent);
 
     // Act
@@ -400,13 +400,13 @@ describe("getRSVPsByStatus", () => {
   test("should return 500 if getRSVPsByStatus fails", async () => {
     // Arrange
     const req = {
-      params: { eventId: "event1" },
-      query: { status: "pending" },
-      user: { user_id: "organizer1" },
+      params: {eventId: "event1"},
+      query: {status: "pending"},
+      user: {user_id: "organizer1"},
     };
     const res = createFakeRes();
     const errorMessage = "Database error";
-    const fakeEvent = { id: "event1", creatorId: "organizer1" };
+    const fakeEvent = {id: "event1", creatorId: "organizer1"};
     eventModel.getEventById.mockResolvedValue(fakeEvent);
     rsvpModel.getRSVPsByStatus.mockRejectedValue(new Error(errorMessage));
 
@@ -415,7 +415,7 @@ describe("getRSVPsByStatus", () => {
 
     // Assert
     expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith({ error: errorMessage });
+    expect(res.json).toHaveBeenCalledWith({error: errorMessage});
   });
 });
 
@@ -425,9 +425,9 @@ describe("getRSVPsByStatus", () => {
 describe("getRSVPsByUser", () => {
   test("should return RSVPs for the logged-in user", async () => {
     // Arrange
-    const req = { user: { user_id: "user1" } };
+    const req = {user: {user_id: "user1"}};
     const res = createFakeRes();
-    const fakeRSVPs = [{ id: "rsvp1" }, { id: "rsvp2" }];
+    const fakeRSVPs = [{id: "rsvp1"}, {id: "rsvp2"}];
     rsvpModel.getUserRSVPs.mockResolvedValue(fakeRSVPs);
 
     // Act
@@ -436,22 +436,22 @@ describe("getRSVPsByUser", () => {
     // Assert
     expect(rsvpModel.getUserRSVPs).toHaveBeenCalledWith("user1");
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ rsvps: fakeRSVPs });
+    expect(res.json).toHaveBeenCalledWith({rsvps: fakeRSVPs});
   });
 
   test("should return 500 if getUserRSVPs fails", async () => {
     // Arrange
-    const req = { user: { user_id: "user1" } };
+    const req = {user: {user_id: "user1"}};
     const res = createFakeRes();
     const errorMessage = "User RSVPs error";
     rsvpModel.getUserRSVPs.mockRejectedValue(new Error(errorMessage));
-  
+
     // Act
     await rsvpController.getRSVPsByUser(req, res);
-  
+
     // Assert
     expect(res.status).toHaveBeenCalledWith(500);
     // Expect the exact error from the mock, without the prefix.
-    expect(res.json).toHaveBeenCalledWith({ error: errorMessage });
-  });  
+    expect(res.json).toHaveBeenCalledWith({error: errorMessage});
+  });
 });
