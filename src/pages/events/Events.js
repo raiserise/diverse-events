@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { getAllData } from "../../api/apiService";
 import EventCard from "../../components/EventCard";
-
+import EventsFilter from "../../components/EventsFilter";
 
 function Events() {
   const [events, setEvents] = useState([]);
@@ -43,25 +43,12 @@ function Events() {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Search and filters */}
-      <div className="mb-6">
-        <input 
-          type="text"
-          placeholder="Search events..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="border p-2 rounded mr-4"
-        />
-        <select
-          value={selectedFormat}
-          onChange={(e) => setSelectedFormat(e.target.value)}
-          className="border p-2 rounded"
-        >
-          <option value="">All Formats</option>
-          <option value="Online">Online</option>
-          <option value="Physical">Physical</option>
-          <option value="Hybrid">Hybrid</option>
-        </select>
-      </div>
+      <EventsFilter
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        selectedFormat={selectedFormat}
+        onFormatChange={setSelectedFormat}
+      />
 
       {/* Events grid */}
       {loading ? (
