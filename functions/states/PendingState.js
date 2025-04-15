@@ -29,13 +29,13 @@ class PendingState extends BaseState {
     });
 
     await this.sendUserNotification(
-        "rsvp_pending",
-        "Your RSVP has been approved. You are now confirmed as a guest/participant.",
+      "rsvp_approved",
+      "Your RSVP has been approved. You are now confirmed as a guest/participant."
     );
 
     await this.sendOrganizerNotification(
-        "rsvp_received",
-        `User ${this.rsvp.userId} has been approved for your event.`,
+      "rsvp_received",
+      `User ${this.rsvp.userId} has been approved for your event.`
     );
   }
 
@@ -46,15 +46,15 @@ class PendingState extends BaseState {
     });
 
     await this.sendUserNotification(
-        "rsvp_confirmation",
-        "Your RSVP for the event has been rejected.",
+      "rsvp_rejected",
+      "Your RSVP for the event has been rejected."
     );
   }
 
   async cancel() {
-    const {db} = this;
+    const { db } = this;
     // eslint-disable-next-line no-unused-vars
-    const {eventId, userId, id: rsvpId} = this.rsvp;
+    const { eventId, userId, id: rsvpId } = this.rsvp;
     const rsvpRef = db.collection("rsvps").doc(rsvpId);
     const eventRef = db.collection("events").doc(eventId);
 
@@ -76,8 +76,8 @@ class PendingState extends BaseState {
     });
 
     await this.sendUserNotification(
-        "rsvp_update",
-        "Your pending RSVP has been cancelled",
+      "rsvp_cancelled",
+      "Your pending RSVP has been cancelled"
     );
   }
 }

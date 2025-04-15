@@ -15,7 +15,7 @@ class ApprovedState extends BaseState {
       const diffMinutes = (now - lastCancelledAt) / (1000 * 60);
       if (diffMinutes < cooldownMinutes) {
         throw new Error(
-            `You must wait ${Math.ceil(cooldownMinutes - diffMinutes)} minutes before RSVPing again.`,
+          `You must wait ${Math.ceil(cooldownMinutes - diffMinutes)} minutes before RSVPing again.`
         );
       }
     }
@@ -33,13 +33,13 @@ class ApprovedState extends BaseState {
     });
 
     await this.sendUserNotification(
-        "rsvp_confirmation",
-        "Your RSVP for the event has been cancelled.",
+      "rsvp_cancelled",
+      "Your RSVP for the event has been cancelled."
     );
 
     await this.sendOrganizerNotification(
-        "rsvp_received",
-        `User ${this.rsvp.userId} has cancelled their RSVP for your event.`,
+      "rsvp_received",
+      `User ${this.rsvp.userId} has cancelled their RSVP for your event.`
     );
   }
 }
