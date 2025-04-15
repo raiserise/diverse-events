@@ -29,7 +29,8 @@ const submitRSVP = async (req, res) => {
     await notificationModel.createNotification({
       userId,
       type: "rsvp_confirmation",
-      message: `You have successfully RSVP'd as a guest/participant for the event.`,
+      // eslint-disable-next-line max-len
+      message: `You have successfully RSVP'd as a guest/participant for the event: ${event.title}.`,
       relatedEventId: eventId,
     });
 
