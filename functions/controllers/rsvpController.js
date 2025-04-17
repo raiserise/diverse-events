@@ -71,7 +71,6 @@ const updateRSVPStatus = async (req, res) => {
   try {
     const {rsvpId} = req.params;
     const {status} = req.body;
-    const userId = req.user.user_id;
 
     // Fetch RSVP details
     const rsvpData = await rsvpModel.getRSVPById(rsvpId);
@@ -79,32 +78,6 @@ const updateRSVPStatus = async (req, res) => {
       return res.status(404).json({error: "RSVP not found."});
     }
 
-    // Ensure only the RSVP owner can update it
-    const updatedRSVP = await rsvpModel.updateRSVP(rsvpId, userId, status);
-
-    // Generate notification message dynamically
-    const statusMessages = new Map([
-      [
-        "approved",
-        "Your RSVP has been approved. You are now confirmed as a guest/participant for the event.",
-      ],
-      ["rejected", "Your RSVP for the event has been rejected."],
-      ["cancelled", "Your RSVP for the event has been cancelled."],
-    ]);
-
-    // Validate and get message
-    const message =
-      statusMessages.get(status) || "Your RSVP status has been updated.";
-
-    // Notify the RSVP user
-    await notificationModel.createNotification({
-      userId,
-      type: "rsvp_confirmation",
-      message,
-      relatedEventId: rsvpData.eventId,
-    });
-
-    res.status(200).json(updatedRSVP);
     // Load RSVP instance and delegate to state class
     const rsvpInstance = await rsvpModel.load(rsvpId);
 
