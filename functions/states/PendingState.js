@@ -3,6 +3,32 @@ const admin = require("firebase-admin"); // Import Firebase Admin SDK
 const BaseState = require("./BaseState");
 
 class PendingState extends BaseState {
+  async onEnter() {
+    const rsvpRef = this.db.collection("rsvps").doc(this.rsvp.id);
+    const rsvpSnap = await rsvpRef.get();
+    const rsvpData = rsvpSnap.data();
+
+    let message = "Your RSVP has been received and is now pending approval.";
+
+    if (rsvpData.reapplied) {
+      message = "Your RSVP has been reapplied and is now pending approval.";
+      await rsvpRef.update({ reapplied: admin.firestore.FieldValue.delete() });
+    }
+
+    await this.sendUserNotification("rsvp_pending", message);
+
+    const eventDoc = await this.db
+      .collection("events")
+      .doc(this.rsvp.eventId)
+      .get();
+    const eventData = eventDoc.data();
+
+    await this.sendOrganizerNotification(
+      "rsvp_received",
+      `User ${this.rsvp.userId} has RSVP'd as a guest/participant for "${eventData?.title || "your event"}".`
+    );
+  }
+
   async approve() {
     const eventRef = this.db.collection("events").doc(this.rsvp.eventId);
     const rsvpRef = this.db.collection("rsvps").doc(this.rsvp.id);
@@ -29,13 +55,13 @@ class PendingState extends BaseState {
     });
 
     await this.sendUserNotification(
-        "rsvp_approved",
-        "Your RSVP has been approved. You are now confirmed as a guest/participant.",
+      "rsvp_approved",
+      "Your RSVP has been approved. You are now confirmed as a guest/participant."
     );
 
     await this.sendOrganizerNotification(
-        "rsvp_received",
-        `User ${this.rsvp.userId} has been approved for your event.`,
+      "rsvp_received",
+      `User ${this.rsvp.userId} has been approved for your event.`
     );
   }
 
@@ -46,15 +72,15 @@ class PendingState extends BaseState {
     });
 
     await this.sendUserNotification(
-        "rsvp_rejected",
-        "Your RSVP for the event has been rejected.",
+      "rsvp_rejected",
+      "Your RSVP for the event has been rejected."
     );
   }
 
   async cancel() {
-    const {db} = this;
+    const { db } = this;
     // eslint-disable-next-line no-unused-vars
-    const {eventId, userId, id: rsvpId} = this.rsvp;
+    const { eventId, userId, id: rsvpId } = this.rsvp;
     const rsvpRef = db.collection("rsvps").doc(rsvpId);
     const eventRef = db.collection("events").doc(eventId);
 
@@ -76,8 +102,8 @@ class PendingState extends BaseState {
     });
 
     await this.sendUserNotification(
-        "rsvp_cancelled",
-        "Your pending RSVP has been cancelled",
+      "rsvp_cancelled",
+      "Your pending RSVP has been cancelled"
     );
   }
 }
