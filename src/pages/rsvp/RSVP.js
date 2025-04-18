@@ -404,12 +404,6 @@ const ManageRSVPList = ({ rsvps, onApprove, onReject }) => {
                     </span>
                   </div>
                 )}
-                {rsvp.dietaryRequirements && (
-                  <div className="bg-yellow-100 p-3 rounded mt-4">
-                    <p className="font-medium">Dietary Needs:</p>
-                    <p>{rsvp.dietaryRequirements}</p>
-                  </div>
-                )}
               </div>
               <div className="flex-shrink-0">
                 <h4 className="font-medium mb-2">{rsvp.event.title}</h4>

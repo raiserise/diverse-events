@@ -9,7 +9,7 @@ const {
   findRSVP,
   getUserRSVPs,
 } = require("../../models/rsvpModel");
-const {db} = require("../../config/firebase");
+const { db } = require("../../config/firebase");
 
 // --- Mocks ---
 // Mock the Firebase config module so we can simulate Firestore operations.
@@ -27,7 +27,7 @@ jest.mock("firebase-admin", () => {
     arrayUnion: jest.fn((val) => val),
     arrayRemove: jest.fn((val) => val),
   };
-  return {firestore: {FieldValue}};
+  return { firestore: { FieldValue } };
 });
 
 // Reset mocks before each test.
@@ -43,15 +43,13 @@ describe("createRSVP", () => {
     const eventId = "event1";
     const userId = "user1";
     const data = {
-      inviteId: "inv123", // triggers type "invited"
-      dietaryRequirements: "none",
       organizers: ["organizer1"],
     };
 
     // Simulate duplicate check: empty result
     const duplicateQueryMock = {
       where: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue({empty: true, docs: []}),
+      get: jest.fn().mockResolvedValue({ empty: true, docs: [] }),
     };
 
     // Simulate the document creation
@@ -62,10 +60,10 @@ describe("createRSVP", () => {
 
     // First call: duplicate check; second call: create new doc.
     db.collection
-        .mockImplementationOnce(() => duplicateQueryMock)
-        .mockImplementationOnce(() => ({
-          doc: jest.fn(() => fakeDocRef),
-        }));
+      .mockImplementationOnce(() => duplicateQueryMock)
+      .mockImplementationOnce(() => ({
+        doc: jest.fn(() => fakeDocRef),
+      }));
 
     const result = await createRSVP(eventId, userId, data);
 
@@ -74,32 +72,29 @@ describe("createRSVP", () => {
       eventId,
       userId,
       status: "pending",
-      type: "invited",
-      inviteId: "inv123",
-      dietaryRequirements: "none",
       organizers: ["organizer1"],
     });
     expect(fakeDocRef.set).toHaveBeenCalledWith(
-        expect.objectContaining({
-          createdAt: expect.any(Date),
-        }),
+      expect.objectContaining({
+        createdAt: expect.any(Date),
+      })
     );
   });
 
   test("should throw error when duplicate RSVP exists", async () => {
     const eventId = "event1";
     const userId = "user1";
-    const data = {organizers: ["organizer1"]};
+    const data = { organizers: ["organizer1"] };
 
     const duplicateQueryMock = {
       where: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue({empty: false, docs: [{}]}),
+      get: jest.fn().mockResolvedValue({ empty: false, docs: [{}] }),
     };
 
     db.collection.mockImplementation(() => duplicateQueryMock);
 
     await expect(createRSVP(eventId, userId, data)).rejects.toThrow(
-        "You have already RSVP'd for this event.",
+      "You have already RSVP'd for this event."
     );
   });
 });
@@ -114,18 +109,18 @@ describe("updateRSVP", () => {
     const newStatus = "approved";
 
     // Simulate missing RSVP document
-    const fakeRsvpDoc = {exists: false};
-    const rsvpDocMock = {get: jest.fn().mockResolvedValue(fakeRsvpDoc)};
+    const fakeRsvpDoc = { exists: false };
+    const rsvpDocMock = { get: jest.fn().mockResolvedValue(fakeRsvpDoc) };
 
     db.collection.mockImplementation((coll) => {
       if (coll === "rsvps") {
-        return {doc: jest.fn(() => rsvpDocMock)};
+        return { doc: jest.fn(() => rsvpDocMock) };
       }
       return {};
     });
 
     await expect(updateRSVP(rsvpId, userId, newStatus)).rejects.toThrow(
-        "RSVP not found.",
+      "RSVP not found."
     );
   });
 
@@ -144,17 +139,17 @@ describe("updateRSVP", () => {
       id: rsvpId,
       data: () => fakeRsvpData,
     };
-    const rsvpDocMock = {get: jest.fn().mockResolvedValue(fakeRsvpDoc)};
+    const rsvpDocMock = { get: jest.fn().mockResolvedValue(fakeRsvpDoc) };
 
     db.collection.mockImplementation((coll) => {
       if (coll === "rsvps") {
-        return {doc: jest.fn(() => rsvpDocMock)};
+        return { doc: jest.fn(() => rsvpDocMock) };
       }
       return {};
     });
 
     await expect(updateRSVP(rsvpId, userId, newStatus)).rejects.toThrow(
-        "No change detected in RSVP status.",
+      "No change detected in RSVP status."
     );
   });
 
@@ -173,17 +168,17 @@ describe("updateRSVP", () => {
       id: rsvpId,
       data: () => fakeRsvpData,
     };
-    const rsvpDocMock = {get: jest.fn().mockResolvedValue(fakeRsvpDoc)};
+    const rsvpDocMock = { get: jest.fn().mockResolvedValue(fakeRsvpDoc) };
 
     db.collection.mockImplementation((coll) => {
       if (coll === "rsvps") {
-        return {doc: jest.fn(() => rsvpDocMock)};
+        return { doc: jest.fn(() => rsvpDocMock) };
       }
       return {};
     });
 
     await expect(updateRSVP(rsvpId, userId, newStatus)).rejects.toThrow(
-        "Unauthorized: Only the participant can cancel their RSVP.",
+      "Unauthorized: Only the participant can cancel their RSVP."
     );
   });
 
@@ -202,17 +197,17 @@ describe("updateRSVP", () => {
       id: rsvpId,
       data: () => fakeRsvpData,
     };
-    const rsvpDocMock = {get: jest.fn().mockResolvedValue(fakeRsvpDoc)};
+    const rsvpDocMock = { get: jest.fn().mockResolvedValue(fakeRsvpDoc) };
 
     db.collection.mockImplementation((coll) => {
       if (coll === "rsvps") {
-        return {doc: jest.fn(() => rsvpDocMock)};
+        return { doc: jest.fn(() => rsvpDocMock) };
       }
       return {};
     });
 
     await expect(updateRSVP(rsvpId, userId, newStatus)).rejects.toThrow(
-        "Unauthorized: Only organizers can update RSVP status.",
+      "Unauthorized: Only organizers can update RSVP status."
     );
   });
 
@@ -231,11 +226,11 @@ describe("updateRSVP", () => {
       id: rsvpId,
       data: () => fakeRsvpData,
     };
-    const rsvpDocMock = {get: jest.fn().mockResolvedValue(fakeRsvpDoc)};
+    const rsvpDocMock = { get: jest.fn().mockResolvedValue(fakeRsvpDoc) };
 
     // Fake event document for transaction – event exists and has capacity.
-    const fakeEventData = {participants: [], maxParticipants: 100};
-    const fakeEventDoc = {exists: true, data: () => fakeEventData};
+    const fakeEventData = { participants: [], maxParticipants: 100 };
+    const fakeEventDoc = { exists: true, data: () => fakeEventData };
 
     // Create a fake transaction object.
     const updateSpy = jest.fn();
@@ -246,21 +241,21 @@ describe("updateRSVP", () => {
 
     // Mock runTransaction to immediately invoke the callback with our fake transaction.
     db.runTransaction.mockImplementation((updateFn) =>
-      updateFn(fakeTransaction),
+      updateFn(fakeTransaction)
     );
 
     db.collection.mockImplementation((coll) => {
       if (coll === "rsvps") {
-        return {doc: jest.fn(() => rsvpDocMock)};
+        return { doc: jest.fn(() => rsvpDocMock) };
       }
       if (coll === "events") {
-        return {doc: jest.fn(() => ({}))}; // eventRef (its content is used in transaction.get)
+        return { doc: jest.fn(() => ({})) }; // eventRef (its content is used in transaction.get)
       }
       return {};
     });
 
     const result = await updateRSVP(rsvpId, userId, newStatus);
-    expect(result).toEqual({id: rsvpId, status: newStatus});
+    expect(result).toEqual({ id: rsvpId, status: newStatus });
     expect(updateSpy).toHaveBeenCalled();
   });
 
@@ -280,10 +275,10 @@ describe("updateRSVP", () => {
       id: rsvpId,
       data: () => fakeRsvpData,
     };
-    const rsvpDocMock = {get: jest.fn().mockResolvedValue(fakeRsvpDoc)};
+    const rsvpDocMock = { get: jest.fn().mockResolvedValue(fakeRsvpDoc) };
 
-    const fakeEventData = {participants: ["user1"], maxParticipants: 100};
-    const fakeEventDoc = {exists: true, data: () => fakeEventData};
+    const fakeEventData = { participants: ["user1"], maxParticipants: 100 };
+    const fakeEventDoc = { exists: true, data: () => fakeEventData };
 
     const updateSpy = jest.fn();
     const fakeTransaction = {
@@ -292,21 +287,21 @@ describe("updateRSVP", () => {
     };
 
     db.runTransaction.mockImplementation((updateFn) =>
-      updateFn(fakeTransaction),
+      updateFn(fakeTransaction)
     );
 
     db.collection.mockImplementation((coll) => {
       if (coll === "rsvps") {
-        return {doc: jest.fn(() => rsvpDocMock)};
+        return { doc: jest.fn(() => rsvpDocMock) };
       }
       if (coll === "events") {
-        return {doc: jest.fn(() => ({}))};
+        return { doc: jest.fn(() => ({})) };
       }
       return {};
     });
 
     const result = await updateRSVP(rsvpId, userId, newStatus);
-    expect(result).toEqual({id: rsvpId, status: newStatus});
+    expect(result).toEqual({ id: rsvpId, status: newStatus });
     expect(updateSpy).toHaveBeenCalled();
   });
 
@@ -325,14 +320,14 @@ describe("updateRSVP", () => {
       id: rsvpId,
       data: () => fakeRsvpData,
     };
-    const rsvpDocMock = {get: jest.fn().mockResolvedValue(fakeRsvpDoc)};
+    const rsvpDocMock = { get: jest.fn().mockResolvedValue(fakeRsvpDoc) };
 
     // Simulate event at full capacity.
     const fakeEventData = {
       participants: ["user1", "userX"],
       maxParticipants: 2,
     };
-    const fakeEventDoc = {exists: true, data: () => fakeEventData};
+    const fakeEventDoc = { exists: true, data: () => fakeEventData };
 
     const fakeTransaction = {
       get: jest.fn().mockResolvedValue(fakeEventDoc),
@@ -340,21 +335,21 @@ describe("updateRSVP", () => {
     };
 
     db.runTransaction.mockImplementation((updateFn) =>
-      updateFn(fakeTransaction),
+      updateFn(fakeTransaction)
     );
 
     db.collection.mockImplementation((coll) => {
       if (coll === "rsvps") {
-        return {doc: jest.fn(() => rsvpDocMock)};
+        return { doc: jest.fn(() => rsvpDocMock) };
       }
       if (coll === "events") {
-        return {doc: jest.fn(() => ({}))};
+        return { doc: jest.fn(() => ({})) };
       }
       return {};
     });
 
     await expect(updateRSVP(rsvpId, userId, newStatus)).rejects.toThrow(
-        "Event is at full capacity.",
+      "Event is at full capacity."
     );
   });
 
@@ -369,17 +364,17 @@ describe("updateRSVP", () => {
       userId: "user1",
       status: "pending",
       organizers: ["organizer1"],
-      lastCancelledAt: {toDate: () => fiveMinutesAgo},
+      lastCancelledAt: { toDate: () => fiveMinutesAgo },
     };
     const fakeRsvpDoc = {
       exists: true,
       id: rsvpId,
       data: () => fakeRsvpData,
     };
-    const rsvpDocMock = {get: jest.fn().mockResolvedValue(fakeRsvpDoc)};
+    const rsvpDocMock = { get: jest.fn().mockResolvedValue(fakeRsvpDoc) };
 
-    const fakeEventData = {participants: ["user1"], maxParticipants: 100};
-    const fakeEventDoc = {exists: true, data: () => fakeEventData};
+    const fakeEventData = { participants: ["user1"], maxParticipants: 100 };
+    const fakeEventDoc = { exists: true, data: () => fakeEventData };
 
     const fakeTransaction = {
       get: jest.fn().mockResolvedValue(fakeEventDoc),
@@ -387,21 +382,21 @@ describe("updateRSVP", () => {
     };
 
     db.runTransaction.mockImplementation((updateFn) =>
-      updateFn(fakeTransaction),
+      updateFn(fakeTransaction)
     );
 
     db.collection.mockImplementation((coll) => {
       if (coll === "rsvps") {
-        return {doc: jest.fn(() => rsvpDocMock)};
+        return { doc: jest.fn(() => rsvpDocMock) };
       }
       if (coll === "events") {
-        return {doc: jest.fn(() => ({}))};
+        return { doc: jest.fn(() => ({})) };
       }
       return {};
     });
 
     await expect(updateRSVP(rsvpId, userId, newStatus)).rejects.toThrow(
-        /You must wait/,
+      /You must wait/
     );
   });
 });
@@ -414,35 +409,35 @@ describe("getRSVPsByStatus", () => {
     const eventId = "event1";
     const status = "pending";
     const fakeDocs = [
-      {id: "rsvp1", data: () => ({eventId, status: "pending"})},
-      {id: "rsvp2", data: () => ({eventId, status: "pending"})},
+      { id: "rsvp1", data: () => ({ eventId, status: "pending" }) },
+      { id: "rsvp2", data: () => ({ eventId, status: "pending" }) },
     ];
-    const getMock = jest.fn().mockResolvedValue({docs: fakeDocs});
+    const getMock = jest.fn().mockResolvedValue({ docs: fakeDocs });
     // Simulate query chain: collection(...).where(...).where(...).get()
     db.collection.mockImplementation(() => ({
       where: jest.fn().mockReturnValue({
-        where: jest.fn().mockReturnValue({get: getMock}),
+        where: jest.fn().mockReturnValue({ get: getMock }),
       }),
     }));
 
     const result = await getRSVPsByStatus(eventId, status);
     expect(result).toEqual([
-      {id: "rsvp1", eventId, status: "pending"},
-      {id: "rsvp2", eventId, status: "pending"},
+      { id: "rsvp1", eventId, status: "pending" },
+      { id: "rsvp2", eventId, status: "pending" },
     ]);
   });
 
   test("should return RSVPs filtered by eventId only when status not provided", async () => {
     const eventId = "event1";
     const fakeDocs = [
-      {id: "rsvp1", data: () => ({eventId, status: "pending"})},
+      { id: "rsvp1", data: () => ({ eventId, status: "pending" }) },
     ];
-    const getMock = jest.fn().mockResolvedValue({docs: fakeDocs});
-    const whereMock = jest.fn().mockReturnValue({get: getMock});
-    db.collection.mockImplementation(() => ({where: whereMock}));
+    const getMock = jest.fn().mockResolvedValue({ docs: fakeDocs });
+    const whereMock = jest.fn().mockReturnValue({ get: getMock });
+    db.collection.mockImplementation(() => ({ where: whereMock }));
 
     const result = await getRSVPsByStatus(eventId);
-    expect(result).toEqual([{id: "rsvp1", eventId, status: "pending"}]);
+    expect(result).toEqual([{ id: "rsvp1", eventId, status: "pending" }]);
   });
 });
 
@@ -452,23 +447,23 @@ describe("getRSVPsByStatus", () => {
 describe("getRSVPById", () => {
   test("should return RSVP if found", async () => {
     const rsvpId = "rsvp1";
-    const fakeData = {eventId: "event1", status: "pending"};
-    const fakeDoc = {exists: true, id: rsvpId, data: () => fakeData};
+    const fakeData = { eventId: "event1", status: "pending" };
+    const fakeDoc = { exists: true, id: rsvpId, data: () => fakeData };
     const getMock = jest.fn().mockResolvedValue(fakeDoc);
     db.collection.mockImplementation(() => ({
-      doc: jest.fn().mockReturnValue({get: getMock}),
+      doc: jest.fn().mockReturnValue({ get: getMock }),
     }));
 
     const result = await getRSVPById(rsvpId);
-    expect(result).toEqual({id: rsvpId, ...fakeData});
+    expect(result).toEqual({ id: rsvpId, ...fakeData });
   });
 
   test("should throw error if RSVP not found", async () => {
     const rsvpId = "rsvp1";
-    const fakeDoc = {exists: false};
+    const fakeDoc = { exists: false };
     const getMock = jest.fn().mockResolvedValue(fakeDoc);
     db.collection.mockImplementation(() => ({
-      doc: jest.fn().mockReturnValue({get: getMock}),
+      doc: jest.fn().mockReturnValue({ get: getMock }),
     }));
 
     await expect(getRSVPById(rsvpId)).rejects.toThrow("RSVP not found.");
@@ -482,28 +477,28 @@ describe("getRSVPsByEvent", () => {
   test("should return RSVPs for given event", async () => {
     const eventId = "event1";
     const fakeDocs = [
-      {id: "rsvp1", data: () => ({eventId, status: "pending"})},
-      {id: "rsvp2", data: () => ({eventId, status: "approved"})},
+      { id: "rsvp1", data: () => ({ eventId, status: "pending" }) },
+      { id: "rsvp2", data: () => ({ eventId, status: "approved" }) },
     ];
-    const getMock = jest.fn().mockResolvedValue({docs: fakeDocs});
-    const whereMock = jest.fn().mockReturnValue({get: getMock});
-    db.collection.mockImplementation(() => ({where: whereMock}));
+    const getMock = jest.fn().mockResolvedValue({ docs: fakeDocs });
+    const whereMock = jest.fn().mockReturnValue({ get: getMock });
+    db.collection.mockImplementation(() => ({ where: whereMock }));
 
     const result = await getRSVPsByEvent(eventId);
     expect(result).toEqual([
-      {id: "rsvp1", eventId, status: "pending"},
-      {id: "rsvp2", eventId, status: "approved"},
+      { id: "rsvp1", eventId, status: "pending" },
+      { id: "rsvp2", eventId, status: "approved" },
     ]);
   });
 
   test("should throw error if fetching RSVPs for event fails", async () => {
     const eventId = "event1";
     const getMock = jest.fn().mockRejectedValue(new Error("Fetch error"));
-    const whereMock = jest.fn().mockReturnValue({get: getMock});
-    db.collection.mockImplementation(() => ({where: whereMock}));
+    const whereMock = jest.fn().mockReturnValue({ get: getMock });
+    db.collection.mockImplementation(() => ({ where: whereMock }));
 
     await expect(getRSVPsByEvent(eventId)).rejects.toThrow(
-        /Error fetching RSVPs for event: Fetch error/,
+      /Error fetching RSVPs for event: Fetch error/
     );
   });
 });
@@ -515,27 +510,27 @@ describe("findRSVP", () => {
   test("should return RSVP if found", async () => {
     const eventId = "event1";
     const userId = "user1";
-    const fakeData = {eventId, userId, status: "pending"};
-    const fakeDocs = [{id: "rsvp1", data: () => fakeData}];
+    const fakeData = { eventId, userId, status: "pending" };
+    const fakeDocs = [{ id: "rsvp1", data: () => fakeData }];
     const getMock = jest
-        .fn()
-        .mockResolvedValue({empty: false, docs: fakeDocs});
+      .fn()
+      .mockResolvedValue({ empty: false, docs: fakeDocs });
     const whereMock = jest.fn().mockReturnThis();
     const limitMock = jest.fn().mockReturnThis();
-    const queryMock = {where: whereMock, limit: limitMock, get: getMock};
+    const queryMock = { where: whereMock, limit: limitMock, get: getMock };
     db.collection.mockImplementation(() => queryMock);
 
     const result = await findRSVP(eventId, userId);
-    expect(result).toEqual({id: "rsvp1", ...fakeData});
+    expect(result).toEqual({ id: "rsvp1", ...fakeData });
   });
 
   test("should return null if RSVP not found", async () => {
     const eventId = "event1";
     const userId = "user1";
-    const getMock = jest.fn().mockResolvedValue({empty: true, docs: []});
+    const getMock = jest.fn().mockResolvedValue({ empty: true, docs: [] });
     const whereMock = jest.fn().mockReturnThis();
     const limitMock = jest.fn().mockReturnThis();
-    const queryMock = {where: whereMock, limit: limitMock, get: getMock};
+    const queryMock = { where: whereMock, limit: limitMock, get: getMock };
     db.collection.mockImplementation(() => queryMock);
 
     const result = await findRSVP(eventId, userId);
@@ -548,11 +543,11 @@ describe("findRSVP", () => {
     const getMock = jest.fn().mockRejectedValue(new Error("Lookup error"));
     const whereMock = jest.fn().mockReturnThis();
     const limitMock = jest.fn().mockReturnThis();
-    const queryMock = {where: whereMock, limit: limitMock, get: getMock};
+    const queryMock = { where: whereMock, limit: limitMock, get: getMock };
     db.collection.mockImplementation(() => queryMock);
 
     await expect(findRSVP(eventId, userId)).rejects.toThrow(
-        /RSVP lookup failed: Lookup error/,
+      /RSVP lookup failed: Lookup error/
     );
   });
 });
@@ -563,9 +558,9 @@ describe("findRSVP", () => {
 describe("countRSVPsByStatus", () => {
   test("should count RSVPs with specified status", () => {
     const rsvps = [
-      {status: "pending"},
-      {status: "approved"},
-      {status: "pending"},
+      { status: "pending" },
+      { status: "approved" },
+      { status: "pending" },
     ];
     const count = countRSVPsByStatus(rsvps, "pending");
     expect(count).toBe(2);
@@ -580,35 +575,35 @@ describe("getUserRSVPs", () => {
     const userId = "user1";
 
     // Add a fake timestamp so that createdAt is defined
-    const fakeTimestamp = {toMillis: () => 1000};
+    const fakeTimestamp = { toMillis: () => 1000 };
     const fakeDocs = [
       {
         id: "rsvp1",
-        data: () => ({userId, status: "pending", createdAt: fakeTimestamp}),
+        data: () => ({ userId, status: "pending", createdAt: fakeTimestamp }),
       },
       {
         id: "rsvp2",
-        data: () => ({userId, status: "approved", createdAt: fakeTimestamp}),
+        data: () => ({ userId, status: "approved", createdAt: fakeTimestamp }),
       },
     ];
     const getMock = jest
-        .fn()
-        .mockResolvedValue({docs: fakeDocs, empty: false});
-    const whereMock = jest.fn().mockReturnValue({get: getMock});
-    db.collection.mockImplementation(() => ({where: whereMock}));
+      .fn()
+      .mockResolvedValue({ docs: fakeDocs, empty: false });
+    const whereMock = jest.fn().mockReturnValue({ get: getMock });
+    db.collection.mockImplementation(() => ({ where: whereMock }));
 
     const result = await getUserRSVPs(userId);
     expect(result).toEqual([
-      {id: "rsvp1", userId, status: "pending", createdAt: fakeTimestamp},
-      {id: "rsvp2", userId, status: "approved", createdAt: fakeTimestamp},
+      { id: "rsvp1", userId, status: "pending", createdAt: fakeTimestamp },
+      { id: "rsvp2", userId, status: "approved", createdAt: fakeTimestamp },
     ]);
   });
 
   test("should log and return empty array if no RSVPs found", async () => {
     const userId = "user1";
-    const getMock = jest.fn().mockResolvedValue({docs: [], empty: true});
-    const whereMock = jest.fn().mockReturnValue({get: getMock});
-    db.collection.mockImplementation(() => ({where: whereMock}));
+    const getMock = jest.fn().mockResolvedValue({ docs: [], empty: true });
+    const whereMock = jest.fn().mockReturnValue({ get: getMock });
+    db.collection.mockImplementation(() => ({ where: whereMock }));
 
     const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
     const result = await getUserRSVPs(userId);
@@ -620,11 +615,11 @@ describe("getUserRSVPs", () => {
   test("should throw error if fetching user RSVPs fails", async () => {
     const userId = "user1";
     const getMock = jest.fn().mockRejectedValue(new Error("User fetch error"));
-    const whereMock = jest.fn().mockReturnValue({get: getMock});
-    db.collection.mockImplementation(() => ({where: whereMock}));
+    const whereMock = jest.fn().mockReturnValue({ get: getMock });
+    db.collection.mockImplementation(() => ({ where: whereMock }));
 
     await expect(getUserRSVPs(userId)).rejects.toThrow(
-        /Error fetching user RSVPs: User fetch error/,
+      /Error fetching user RSVPs: User fetch error/
     );
   });
 });

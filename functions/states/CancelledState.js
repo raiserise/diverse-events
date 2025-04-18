@@ -11,6 +11,7 @@ class CancelledState extends BaseState {
     await db.collection("rsvps").doc(rsvpId).update({
       status: "pending",
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
       reapplied: true,
     });
   }

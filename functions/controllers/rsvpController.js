@@ -4,15 +4,13 @@ const eventModel = require("../models/eventModel");
 
 const submitRSVP = async (req, res) => {
   try {
-    const { eventId, inviteId, dietaryRequirements, organizers } = req.body;
+    const { eventId, organizers } = req.body;
     const userId = req.user.user_id;
     const email = req.user.email;
 
     // Create or update RSVP using the model
     const rsvp = await rsvpModel.createRSVP(eventId, userId, {
       organizers,
-      inviteId,
-      dietaryRequirements,
     });
 
     // Load full RSVP instance (including state class)

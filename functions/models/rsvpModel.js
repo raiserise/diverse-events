@@ -1,4 +1,4 @@
-const {db} = require("../config/firebase");
+const { db } = require("../config/firebase");
 const admin = require("firebase-admin");
 const {
   PendingState,
@@ -54,18 +54,35 @@ class RSVP {
   // Custom serialization to handle circular references
   toJSON() {
     // eslint-disable-next-line no-unused-vars
-    const {state, ...rest} = this; // Exclude the `state` property
+    const { state, ...rest } = this; // Exclude the `state` property
     return rest;
   }
 
   // Static methods (original functionality preserved)
   static async createRSVP(eventId, userId, data) {
+    const eventSnap = await db.collection("events").doc(eventId).get();
+
+    if (!eventSnap.exists) {
+      throw new Error("Event not found.");
+    }
+
+    const eventData = eventSnap.data();
+
+    // Optional: Prevent RSVP if the event is closed or archived
+    if (eventData.status === "cancelled" || eventData.status === "closed") {
+      throw new Error("RSVPs are no longer accepted for this event.");
+    }
+
+    if (eventData.participants?.length >= eventData.maxParticipants) {
+      throw new Error("Event is full. RSVP not allowed.");
+    }
+
     const existingRSVP = await db
-        .collection("rsvps")
-        .where("eventId", "==", eventId)
-        .where("userId", "==", userId)
-        .limit(1)
-        .get();
+      .collection("rsvps")
+      .where("eventId", "==", eventId)
+      .where("userId", "==", userId)
+      .limit(1)
+      .get();
 
     if (!existingRSVP.empty) {
       const rsvpDoc = existingRSVP.docs[0];
@@ -86,9 +103,6 @@ class RSVP {
       eventId,
       userId,
       status: "pending",
-      type: data.inviteId ? "invited" : "public",
-      inviteId: data.inviteId || null,
-      dietaryRequirements: data.dietaryRequirements || null,
       organizers: data.organizers,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
@@ -153,9 +167,9 @@ class RSVP {
 
   static async getRSVPsByEvent(eventId) {
     const snapshot = await db
-        .collection("rsvps")
-        .where("eventId", "==", eventId)
-        .get();
+      .collection("rsvps")
+      .where("eventId", "==", eventId)
+      .get();
 
     // Return plain objects instead of RSVP instances
     return snapshot.docs.map((doc) => ({
@@ -166,15 +180,15 @@ class RSVP {
 
   static async findRSVP(eventId, userId) {
     const snapshot = await db
-        .collection("rsvps")
-        .where("eventId", "==", eventId)
-        .where("userId", "==", userId)
-        .limit(1)
-        .get();
+      .collection("rsvps")
+      .where("eventId", "==", eventId)
+      .where("userId", "==", userId)
+      .limit(1)
+      .get();
 
-    return snapshot.empty ?
-      null :
-      new RSVP(snapshot.docs[0].id, snapshot.docs[0].data());
+    return snapshot.empty
+      ? null
+      : new RSVP(snapshot.docs[0].id, snapshot.docs[0].data());
   }
 
   static countRSVPsByStatus(rsvps, status) {
@@ -183,22 +197,22 @@ class RSVP {
 
   static async getUserRSVPs(userId) {
     const snapshot = await db
-        .collection("rsvps")
-        .where("userId", "==", userId)
-        .get();
+      .collection("rsvps")
+      .where("userId", "==", userId)
+      .get();
 
     // Return plain objects instead of RSVP instances to avoid circular references
     return snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toMillis?.(),
-          lastCancelledAt: doc.data().lastCancelledAt?.toMillis?.(),
-        }))
-        .sort(
-            (a, b) =>
-              b.lastCancelledAt - a.lastCancelledAt || b.createdAt - a.createdAt,
-        );
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toMillis?.(),
+        lastCancelledAt: doc.data().lastCancelledAt?.toMillis?.(),
+      }))
+      .sort(
+        (a, b) =>
+          b.lastCancelledAt - a.lastCancelledAt || b.createdAt - a.createdAt
+      );
   }
 }
 
