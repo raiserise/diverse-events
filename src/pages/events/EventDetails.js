@@ -6,14 +6,13 @@ import FirebaseImage from "../../components/FirebaseImage";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { InviteBase } from "../../invite/InviteBase";
+import { NotifyDecorator } from "../../invite/NotifyDecorator";
 import {
   getFirestore,
   updateDoc,
-  addDoc,
-  collection,
   doc,
-  serverTimestamp,
-  arrayUnion,
+  serverTimestamp
 } from "firebase/firestore";
 import EventModal from "../../components/EventModal";
 import {
@@ -759,19 +758,11 @@ function EventDetails() {
                     <button
                       className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
                       onClick={async () => {
-                        const db = getFirestore();
+                        const base = new InviteBase(event.id, event.title); 
+                        const decorated = new NotifyDecorator(base);
+                      
                         try {
-                          await updateDoc(doc(db, "events", event.id), {
-                            invitedUsers: arrayUnion(u.id),
-                          });
-                          await addDoc(collection(db, "notifications"), {
-                            relatedEventId: event.id,
-                            userId: u.id,
-                            message: `You have been invited to the event: ${event.title}`,
-                            createdAt: serverTimestamp(),
-                            type: "event_invite",
-                            read: false,
-                          });
+                          await decorated.invite(u, event);
                           setInvitedUsers((prev) => [...prev, u.id]);
                         } catch (err) {
                           console.error("Error inviting user:", err);
