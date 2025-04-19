@@ -13,6 +13,10 @@ function MyEvents() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { events, loading, error } = useUserEvents(user?.uid);
 
+  // Search and format filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFormat, setSelectedFormat] = useState("");
+
   const handleModalClose = () => setIsModalOpen(false);
 
   const {
@@ -21,12 +25,12 @@ function MyEvents() {
     handleFileChange,
     handleSubmit,
     isSubmitting,
-    submitError,
+    submitError
   } = useEventForm(() => setIsModalOpen(false));
 
   const onSubmitEvent = (e) => handleSubmit(e, user?.uid);
 
-  // Build and normalize events using Builder pattern
+  // Build events with Builder pattern
   const [builtEvents, setBuiltEvents] = useState([]);
   useEffect(() => {
     if (!events) {
@@ -34,28 +38,17 @@ function MyEvents() {
       return;
     }
     const list = events.map(evt => {
-      // Normalize startDate
       let start = evt.startDate;
-      if (start && typeof start.toDate === 'function') {
-        start = start.toDate();
-      } else if (start && typeof start.seconds === 'number') {
-        start = new Date(start.seconds * 1000);
-      } else if (start && start._seconds) {
-        start = new Date(start._seconds * 1000);
-      } else if (typeof start === 'string') {
-        start = new Date(start);
-      }
-      // Normalize endDate
+      if (start && typeof start.toDate === 'function') start = start.toDate();
+      else if (start && typeof start.seconds === 'number') start = new Date(start.seconds * 1000);
+      else if (start && start._seconds) start = new Date(start._seconds * 1000);
+      else if (typeof start === 'string') start = new Date(start);
+
       let end = evt.endDate;
-      if (end && typeof end.toDate === 'function') {
-        end = end.toDate();
-      } else if (end && typeof end.seconds === 'number') {
-        end = new Date(end.seconds * 1000);
-      } else if (end && end._seconds) {
-        end = new Date(end._seconds * 1000);
-      } else if (typeof end === 'string') {
-        end = new Date(end);
-      }
+      if (end && typeof end.toDate === 'function') end = end.toDate();
+      else if (end && typeof end.seconds === 'number') end = new Date(end.seconds * 1000);
+      else if (end && end._seconds) end = new Date(end._seconds * 1000);
+      else if (typeof end === 'string') end = new Date(end);
 
       return new EventBuilder()
         .setId(evt.id)
@@ -71,6 +64,17 @@ function MyEvents() {
     setBuiltEvents(list);
   }, [events]);
 
+  // Apply filters to built events
+  const [filteredEvents, setFilteredEvents] = useState([]);
+  useEffect(() => {
+    const filtered = builtEvents.filter(evt => {
+      const matchesSearch = !searchQuery || evt.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesFormat = !selectedFormat || evt.format === selectedFormat;
+      return matchesSearch && matchesFormat;
+    });
+    setFilteredEvents(filtered);
+  }, [builtEvents, searchQuery, selectedFormat]);
+
   if (loading) return <p className="text-center p-6">Loading...</p>;
   if (error) return <p className="text-center text-red-500 p-6">{error}</p>;
 
@@ -78,14 +82,10 @@ function MyEvents() {
     <div className="container mx-auto p-8">
       <div className="flex justify-between items-center mb-4">
         <EventsFilter
-          searchQuery={formData.title}
-          onSearchChange={(query) =>
-            handleChange({ target: { name: "title", value: query } })
-          }
-          selectedFormat={formData.format}
-          onFormatChange={(format) =>
-            handleChange({ target: { name: "format", value: format } })
-          }
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          selectedFormat={selectedFormat}
+          onFormatChange={setSelectedFormat}
         />
         <button
           onClick={() => setIsModalOpen(true)}
@@ -96,7 +96,7 @@ function MyEvents() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {builtEvents.map((event) => (
+        {filteredEvents.map(event => (
           <EventCard key={event.id} event={event} />
         ))}
       </div>
