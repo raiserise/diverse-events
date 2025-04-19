@@ -65,6 +65,7 @@ function MyEvents() {
         .setStartDate(start)
         .setEndDate(end)
         .setFeaturedImage(evt.featuredImage)
+        .setLocation(evt.location)
         .build();
     });
     setBuiltEvents(list);
