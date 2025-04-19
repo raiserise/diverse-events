@@ -12,6 +12,7 @@ import EventModal from "../../components/EventModal";
 import CustomModal from "../../components/CustomModal";
 import { InviteBase } from "../../invite/InviteBase";
 import { NotifyDecorator } from "../../invite/NotifyDecorator";
+import EventBuilder from "../../builders/EventBuilders";
 
 function EventDetails() {
   const navigate = useNavigate();
@@ -73,7 +74,26 @@ function EventDetails() {
           const allowed = data.organizers?.includes(user.uid) || data.invitedUsers?.includes(user.uid);
           if (!allowed) { setError("Not authorized"); return; }
         }
-        setEvent({ id, ...data });
+        // setEvent({ id, ...data });
+        const built = new EventBuilder()
+          .setId(id)
+          .setTitle(data.title)
+          .setDescription(data.description)
+          .setFeaturedImage(data.featuredImage)
+          .setStatus(data.status)
+          .setAcceptsRSVP(data.acceptsRSVP)
+          .setPrivacy(data.privacy)
+          .setFormat(data.format)
+          .setCategory(data.category)
+          .setStartDate(data.startDate)
+          .setEndDate(data.endDate)
+          .setMaxParticipants(data.maxParticipants)
+          .setInvitedUsers(data.invitedUsers)
+          .setOrganizers(data.organizers)
+          .setParticipants(data.participants)
+          .build();
+        setEvent(built);
+       
         setInvitedUsers(data.invitedUsers || []);
         if (data.organizers?.length) {
           const orgs = await Promise.all(data.organizers.map(o => getDataById("/users", o, true)));

@@ -6,39 +6,7 @@ import EventModal from "../../components/EventModal";
 import { useEventForm } from "../../hooks/useEventForm";
 import { useUserEvents } from "../../hooks/useUserEvents";
 import EventsFilter from "../../components/EventsFilter";
-
-// Utility to normalize various timestamp types into JS Date
-const normalizeEventDates = (event) => {
-  let startDate = event.startDate;
-  if (startDate && typeof startDate.toDate === 'function') {
-    startDate = startDate.toDate();
-  } else if (startDate && typeof startDate.seconds === 'number') {
-    startDate = new Date(startDate.seconds * 1000);
-  } else if (startDate && startDate._seconds) {
-    startDate = new Date(startDate._seconds * 1000);
-  } else if (typeof startDate === 'string') {
-    startDate = new Date(startDate);
-  }
-
-  let endDate = event.endDate;
-  if (endDate && typeof endDate.toDate === 'function') {
-    endDate = endDate.toDate();
-  } else if (endDate && typeof endDate.seconds === 'number') {
-    endDate = new Date(endDate.seconds * 1000);
-  } else if (endDate && endDate._seconds) {
-    endDate = new Date(endDate._seconds * 1000);
-  } else if (typeof endDate === 'string') {
-    endDate = new Date(endDate);
-  }
-
-  return {
-    ...event,
-    startDate,
-    endDate,
-  };
-};
-
-
+import EventBuilder from "../../builders/EventBuilders";
 
 function MyEvents() {
   const { user } = useAuth();
@@ -58,12 +26,48 @@ function MyEvents() {
 
   const onSubmitEvent = (e) => handleSubmit(e, user?.uid);
 
-  // Normalize dates once events load
-  const [normalizedEvents, setNormalizedEvents] = useState([]);
+  // Build and normalize events using Builder pattern
+  const [builtEvents, setBuiltEvents] = useState([]);
   useEffect(() => {
-    if (events) {
-      setNormalizedEvents(events.map(normalizeEventDates));
+    if (!events) {
+      setBuiltEvents([]);
+      return;
     }
+    const list = events.map(evt => {
+      // Normalize startDate
+      let start = evt.startDate;
+      if (start && typeof start.toDate === 'function') {
+        start = start.toDate();
+      } else if (start && typeof start.seconds === 'number') {
+        start = new Date(start.seconds * 1000);
+      } else if (start && start._seconds) {
+        start = new Date(start._seconds * 1000);
+      } else if (typeof start === 'string') {
+        start = new Date(start);
+      }
+      // Normalize endDate
+      let end = evt.endDate;
+      if (end && typeof end.toDate === 'function') {
+        end = end.toDate();
+      } else if (end && typeof end.seconds === 'number') {
+        end = new Date(end.seconds * 1000);
+      } else if (end && end._seconds) {
+        end = new Date(end._seconds * 1000);
+      } else if (typeof end === 'string') {
+        end = new Date(end);
+      }
+
+      return new EventBuilder()
+        .setId(evt.id)
+        .setTitle(evt.title)
+        .setDescription(evt.description)
+        .setFormat(evt.format)
+        .setStartDate(start)
+        .setEndDate(end)
+        .setFeaturedImage(evt.featuredImage)
+        .build();
+    });
+    setBuiltEvents(list);
   }, [events]);
 
   if (loading) return <p className="text-center p-6">Loading...</p>;
@@ -91,7 +95,7 @@ function MyEvents() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {normalizedEvents.map((event) => (
+        {builtEvents.map((event) => (
           <EventCard key={event.id} event={event} />
         ))}
       </div>

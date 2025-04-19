@@ -37,8 +37,6 @@ function Events() {
     
     return matchesSearch && matchesFormat;
   });
-
-  // Rest of your component with rendering logic
   
   return (
     <div className="container mx-auto px-4 py-8">
