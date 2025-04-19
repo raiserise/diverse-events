@@ -7,19 +7,6 @@ class ApprovedState extends BaseState {
     const eventRef = this.db.collection("events").doc(this.rsvp.eventId);
     const rsvpRef = this.db.collection("rsvps").doc(this.rsvp.id);
 
-    const lastCancelledAt = this.rsvp.data.lastCancelledAt?.toDate?.() || null;
-    const cooldownMinutes = 10;
-    const now = new Date();
-
-    if (lastCancelledAt) {
-      const diffMinutes = (now - lastCancelledAt) / (1000 * 60);
-      if (diffMinutes < cooldownMinutes) {
-        throw new Error(
-            `You must wait ${Math.ceil(cooldownMinutes - diffMinutes)} minutes before RSVPing again.`,
-        );
-      }
-    }
-
     await this.db.runTransaction(async (transaction) => {
       transaction.update(rsvpRef, {
         status: "cancelled",
@@ -33,14 +20,26 @@ class ApprovedState extends BaseState {
     });
 
     await this.sendUserNotification(
-        "rsvp_cancelled",
-        "Your RSVP for the event has been cancelled.",
+      "rsvp_cancelled",
+      "Your RSVP for the event has been cancelled."
     );
 
     await this.sendOrganizerNotification(
-        "rsvp_received",
-        `User ${this.rsvp.userId} has cancelled their RSVP for your event.`,
+      "rsvp_received",
+      `User ${this.rsvp.userId} has cancelled their RSVP for your event.`
     );
+
+    const CancelledState = require("./CancelledState");
+    this.rsvp.setState(new CancelledState(this.rsvp));
+  }
+
+  // Prevent invalid operations
+  async approve() {
+    throw new Error("Cannot approve an already approved RSVP.");
+  }
+
+  async reject() {
+    throw new Error("Cannot reject an already approved RSVP.");
   }
 }
 

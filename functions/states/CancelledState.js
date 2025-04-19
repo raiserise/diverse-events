@@ -5,15 +5,30 @@ const BaseState = require("./BaseState");
 class CancelledState extends BaseState {
   async reapply() {
     const { db } = this;
-    const { id: rsvpId } = this.rsvp;
+    const { id: rsvpId, data } = this.rsvp;
 
-    // Reset RSVP to pending
+    const lastCancelledAt = data.lastCancelledAt?.toDate?.() || null;
+    const cooldownMinutes = 10;
+    const now = new Date();
+
+    if (lastCancelledAt) {
+      const diffMinutes = (now - lastCancelledAt) / (1000 * 60);
+      if (diffMinutes < cooldownMinutes) {
+        throw new Error(
+          `You must wait ${Math.ceil(cooldownMinutes - diffMinutes)} minutes before RSVPing again.`
+        );
+      }
+    }
+
     await db.collection("rsvps").doc(rsvpId).update({
       status: "pending",
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       reapplied: true,
     });
+
+    const PendingState = require("./PendingState");
+    this.rsvp.setState(new PendingState(this.rsvp));
   }
 
   // Prevent invalid operations

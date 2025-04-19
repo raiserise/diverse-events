@@ -201,18 +201,29 @@ class RSVP {
       .where("userId", "==", userId)
       .get();
 
-    // Return plain objects instead of RSVP instances to avoid circular references
     return snapshot.docs
-      .map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toMillis?.(),
-        lastCancelledAt: doc.data().lastCancelledAt?.toMillis?.(),
-      }))
-      .sort(
-        (a, b) =>
-          b.lastCancelledAt - a.lastCancelledAt || b.createdAt - a.createdAt
-      );
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toMillis?.() ?? 0,
+          lastCancelledAt: data.lastCancelledAt?.toMillis?.() ?? 0,
+        };
+      })
+      .sort((a, b) => {
+        // Sort pending first
+        if (a.status === "pending" && b.status !== "pending") return -1;
+        if (a.status !== "pending" && b.status === "pending") return 1;
+
+        // Then by lastCancelledAt descending
+        if (b.lastCancelledAt !== a.lastCancelledAt) {
+          return b.lastCancelledAt - a.lastCancelledAt;
+        }
+
+        // Then by createdAt descending
+        return b.createdAt - a.createdAt;
+      });
   }
 }
 

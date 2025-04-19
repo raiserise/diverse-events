@@ -63,6 +63,9 @@ class PendingState extends BaseState {
       "rsvp_received",
       `User ${this.rsvp.userId} has been approved for your event.`
     );
+
+    const ApprovedState = require("./ApprovedState");
+    this.rsvp.setState(new ApprovedState(this.rsvp));
   }
 
   async reject() {
@@ -75,6 +78,9 @@ class PendingState extends BaseState {
       "rsvp_rejected",
       "Your RSVP for the event has been rejected."
     );
+
+    const RejectedState = require("./RejectedState");
+    this.rsvp.setState(new RejectedState(this.rsvp));
   }
 
   async cancel() {
@@ -105,6 +111,9 @@ class PendingState extends BaseState {
       "rsvp_cancelled",
       "Your pending RSVP has been cancelled"
     );
+
+    const CancelledState = require("./CancelledState");
+    this.rsvp.setState(new CancelledState(this.rsvp));
   }
 }
 

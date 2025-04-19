@@ -5,19 +5,22 @@ const BaseState = require("./BaseState");
 
 class RejectedState extends BaseState {
   async reapply() {
-    const {db} = this;
-    const {id: rsvpId} = this.rsvp;
+    const { db } = this;
+    const { id: rsvpId } = this.rsvp;
 
     // Reset RSVP to pending
     await db.collection("rsvps").doc(rsvpId).update({
       status: "pending",
-      updatedAt: db.admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     await this.sendUserNotification(
-        "rsvp_rejected",
-        "Your RSVP has been reapplied and is now pending approval.",
+      "rsvp_rejected",
+      "Your RSVP has been reapplied and is now pending approval."
     );
+
+    const PendingState = require("./PendingState");
+    this.rsvp.setState(new PendingState(this.rsvp));
   }
 
   // Prevent invalid operations
