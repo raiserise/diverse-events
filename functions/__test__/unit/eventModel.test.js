@@ -1,75 +1,231 @@
-const {
-  createEvent,
-  getEventsByUser,
-  getAllEvents,
-  getEventById,
-  updateEvent,
-  deleteEvent,
-} = require("../../models/eventModel");
+const admin = require("firebase-admin");
+const eventModel = require("../../models/eventModel");
 
-describe("Event Model", () => {
-  let testEventId;
-  const testUserId = "test-user-123";
-
-  const baseEventData = {
-    title: "Sample Event",
-    description: "This is a test event.",
-    creatorId: testUserId,
-    privacy: "public",
-    format: "offline",
-    startDate: "2025-04-01",
-    endDate: "2025-04-02",
-    duration: 1,
-    language: "English",
-    maxParticipants: 100,
-    category: ["General"],
-    terms: "Test terms",
-    locationName: "Test Location",
-    latitude: "1.3521",
-    longitude: "103.8198",
-    acceptsRSVP: true,
-    featuredImage: "http://example.com/image.jpg",
-    organizers: ["user123"],
+jest.mock("../../config/firebase", () => {
+  const docMock = {
+    get: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
   };
 
-  test("should create a new event", async () => {
-    const event = await createEvent(baseEventData);
-    expect(event).toHaveProperty("id");
-    expect(event.title).toBe("Sample Event");
-    testEventId = event.id;
+  const collectionMock = {
+    add: jest.fn(),
+    doc: jest.fn(() => docMock),
+    where: jest.fn(() => collectionMock),
+    get: jest.fn(),
+  };
+
+  return {
+    db: {
+      collection: jest.fn(() => collectionMock),
+    },
+  };
+});
+
+jest.mock("firebase-admin", () => {
+  return {
+    firestore: {
+      FieldValue: {
+        serverTimestamp: jest.fn(() => "mock-timestamp"),
+      },
+      GeoPoint: jest.fn((lat, lng) => ({ lat, lng })),
+    },
+  };
+});
+
+const { db } = require("../../config/firebase");
+
+describe("Event Model", () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  test("should get event by ID", async () => {
-    const event = await getEventById(testEventId);
-    expect(event).toHaveProperty("id", testEventId);
-    expect(event.creatorId).toBe(testUserId);
-  });
+  describe("createEvent", () => {
+    it("should create a new event with default values", async () => {
+      db.collection().add.mockResolvedValue({ id: "event123" });
 
-  test("should get events by user", async () => {
-    const events = await getEventsByUser(testUserId);
-    expect(Array.isArray(events)).toBe(true);
-    expect(events.some((e) => e.id === testEventId)).toBe(true);
-  });
+      const result = await eventModel.createEvent({
+        title: "Test Event",
+        creatorId: "user1",
+        latitude: 1.23,
+        longitude: 4.56,
+      });
 
-  test("should get all events visible to the user", async () => {
-    const events = await getAllEvents(testUserId);
-    expect(Array.isArray(events)).toBe(true);
-  });
-
-  test("should update the event", async () => {
-    const updatedEvent = await updateEvent(testEventId, {
-      title: "Updated Event Title",
+      expect(result.id).toBe("event123");
+      expect(db.collection).toHaveBeenCalledWith("events");
+      expect(db.collection().add).toHaveBeenCalled();
+      expect(result.organizers).toContain("user1");
     });
-    expect(updatedEvent.title).toBe("Updated Event Title");
   });
 
-  test("should delete the event", async () => {
-    const response = await deleteEvent(testEventId);
-    expect(response).toHaveProperty("message", "Event successfully deleted");
-    expect(response).toHaveProperty("eventId", testEventId);
+  describe("getEventsByUser", () => {
+    it("should return events created by a user", async () => {
+      db.collection()
+        .where()
+        .get.mockResolvedValue({
+          docs: [{ id: "event1", data: () => ({ title: "Event 1" }) }],
+        });
+
+      const result = await eventModel.getEventsByUser("user1");
+
+      expect(result[0]).toMatchObject({ id: "event1", title: "Event 1" });
+    });
   });
 
-  test("should throw error for deleted event", async () => {
-    await expect(getEventById(testEventId)).rejects.toThrow("Event not found");
+  describe("getAllEvents", () => {
+    it("should return filtered public/related events", async () => {
+      db.collection().get.mockResolvedValue({
+        docs: [
+          {
+            id: "event1",
+            data: () => ({
+              title: "Public Event",
+              privacy: "public",
+              creatorId: "user1",
+              organizers: [],
+              invitedUsers: [],
+            }),
+          },
+          {
+            id: "event2",
+            data: () => ({
+              title: "Private Event",
+              privacy: "private",
+              creatorId: "user2",
+              organizers: ["user3"],
+              invitedUsers: ["user1"],
+            }),
+          },
+        ],
+      });
+
+      const events = await eventModel.getAllEvents("user1");
+
+      expect(events.length).toBe(2);
+      expect(events.map((e) => e.id)).toContain("event1");
+      expect(events.map((e) => e.id)).toContain("event2");
+    });
+  });
+
+  describe("getEventById", () => {
+    it("should return event by ID", async () => {
+      db.collection()
+        .doc()
+        .get.mockResolvedValue({
+          exists: true,
+          id: "event1",
+          data: () => ({ title: "Mock Event" }),
+        });
+
+      const result = await eventModel.getEventById("event1");
+
+      expect(result.title).toBe("Mock Event");
+    });
+
+    it("should throw if event not found", async () => {
+      db.collection().doc().get.mockResolvedValue({ exists: false });
+
+      await expect(eventModel.getEventById("fake")).rejects.toThrow(
+        "Event not found"
+      );
+    });
+  });
+
+  describe("searchEvents", () => {
+    it("should return events based on filters", async () => {
+      db.collection()
+        .where()
+        .get.mockResolvedValue({
+          docs: [{ id: "e1", data: () => ({ title: "Match" }) }],
+        });
+
+      const result = await eventModel.searchEvents({ title: "Match" });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe("Match");
+    });
+  });
+
+  describe("updateEvent", () => {
+    it("should update an event", async () => {
+      const mockRef = {
+        get: jest.fn().mockResolvedValue({ exists: true }),
+        update: jest.fn(),
+      };
+
+      db.collection().doc.mockReturnValue(mockRef);
+      mockRef.get.mockResolvedValueOnce({ exists: true });
+      mockRef.get.mockResolvedValueOnce({
+        id: "event123",
+        data: () => ({ title: "Updated" }),
+      });
+
+      const result = await eventModel.updateEvent("event123", {
+        title: "Updated",
+      });
+
+      expect(mockRef.update).toHaveBeenCalled();
+      expect(result.title).toBe("Updated");
+    });
+
+    it("should throw if event not found", async () => {
+      const mockRef = {
+        get: jest.fn().mockResolvedValue({ exists: false }),
+      };
+
+      db.collection().doc.mockReturnValue(mockRef);
+
+      await expect(eventModel.updateEvent("missing", {})).rejects.toThrow(
+        "Event not found"
+      );
+    });
+  });
+
+  describe("deleteEvent", () => {
+    it("should delete an event", async () => {
+      const mockRef = {
+        get: jest.fn().mockResolvedValue({ exists: true }),
+        delete: jest.fn(),
+      };
+
+      db.collection().doc.mockReturnValue(mockRef);
+
+      const result = await eventModel.deleteEvent("event123");
+
+      expect(mockRef.delete).toHaveBeenCalled();
+      expect(result.message).toBe("Event successfully deleted");
+    });
+
+    it("should throw if event doesn't exist", async () => {
+      const mockRef = {
+        get: jest.fn().mockResolvedValue({ exists: false }),
+      };
+
+      db.collection().doc.mockReturnValue(mockRef);
+
+      await expect(eventModel.deleteEvent("bad")).rejects.toThrow(
+        "Event not found"
+      );
+    });
+  });
+
+  describe("getEventsByIds", () => {
+    it("should return events matching the given IDs", async () => {
+      const mockDocs = [
+        { id: "e1", exists: true, data: () => ({ title: "Event 1" }) },
+        { id: "e2", exists: true, data: () => ({ title: "Event 2" }) },
+      ];
+
+      db.collection().doc.mockImplementation((id) => {
+        const found = mockDocs.find((d) => d.id === id);
+        return {
+          get: jest.fn().mockResolvedValue(found),
+        };
+      });
+
+      const result = await eventModel.getEventsByIds(["e1", "e2"]);
+      expect(result).toHaveLength(2);
+      expect(result[0].title).toBe("Event 1");
+    });
   });
 });

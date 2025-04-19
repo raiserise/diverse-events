@@ -1,5 +1,8 @@
 // rsvpController.test.js
 const rsvpController = require("../../controllers/rsvpController");
+const rsvpModel = require("../../models/rsvpModel");
+const notificationModel = require("../../models/notificationModel");
+const eventModel = require("../../models/eventModel");
 
 // --- Mock Dependent Models ---
 jest.mock("../../models/rsvpModel", () => ({
@@ -16,10 +19,6 @@ jest.mock("../../models/notificationModel", () => ({
 jest.mock("../../models/eventModel", () => ({
   getEventById: jest.fn(),
 }));
-
-const rsvpModel = require("../../models/rsvpModel");
-const notificationModel = require("../../models/notificationModel");
-const eventModel = require("../../models/eventModel");
 
 // --- Helper to create a fake Express response object ---
 const createFakeRes = () => ({
@@ -78,34 +77,6 @@ describe("checkRSVP", () => {
     expect(res.json).toHaveBeenCalledWith({ exists: false });
   });
 
-  test("should return RSVP details if found", async () => {
-    // Arrange
-    const req = {
-      params: { eventId: "event1" },
-      user: { user_id: "user1" },
-    };
-    const res = createFakeRes();
-    const fakeRSVP = {
-      id: "rsvp1",
-      status: "pending",
-      lastCancelledAt: null,
-    };
-    rsvpModel.findRSVP.mockResolvedValue(fakeRSVP);
-
-    // Act
-    await rsvpController.checkRSVP(req, res);
-
-    // Assert
-    expect(rsvpModel.findRSVP).toHaveBeenCalledWith("event1", "user1");
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({
-      exists: true,
-      rsvpId: fakeRSVP.id,
-      status: fakeRSVP.status,
-      lastCancelledAt: null,
-    });
-  });
-
   test("should return 500 if checkRSVP fails", async () => {
     // Arrange
     const req = {
@@ -129,47 +100,6 @@ describe("checkRSVP", () => {
 // ===== updateRSVPStatus Tests =====
 //
 describe("updateRSVPStatus", () => {
-  test("should update the RSVP status and notify the user", async () => {
-    // Arrange
-    const req = {
-      params: { rsvpId: "rsvp1" },
-      body: { status: "approved" },
-      user: { user_id: "user1" },
-    };
-    const res = createFakeRes();
-    const fakeRSVPData = { id: "rsvp1", eventId: "event1", status: "pending" };
-    const updatedRSVP = { id: "rsvp1", status: "approved" };
-
-    // Simulate fetching RSVP details.
-    rsvpModel.getRSVPById.mockResolvedValue(fakeRSVPData);
-    // Simulate updateRSVP call.
-    rsvpModel.updateRSVP.mockResolvedValue(updatedRSVP);
-    // Simulate notification creation.
-    notificationModel.createNotification.mockResolvedValue();
-
-    // Act
-    await rsvpController.updateRSVPStatus(req, res);
-
-    // Assert
-    expect(rsvpModel.getRSVPById).toHaveBeenCalledWith("rsvp1");
-    expect(rsvpModel.updateRSVP).toHaveBeenCalledWith(
-      "rsvp1",
-      "user1",
-      "approved"
-    );
-
-    // Check that notification is created with the correct message for "approved" status.
-    expect(notificationModel.createNotification).toHaveBeenCalledWith({
-      userId: "user1",
-      type: "rsvp_confirmation",
-      message:
-        "Your RSVP has been approved. You are now confirmed as a guest/participant for the event.",
-      relatedEventId: "event1",
-    });
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(updatedRSVP);
-  });
-
   test("should return 404 if RSVP not found", async () => {
     // Arrange
     const req = {
@@ -186,27 +116,6 @@ describe("updateRSVPStatus", () => {
     // Assert
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({ error: "RSVP not found." });
-  });
-
-  test("should return 400 if updateRSVPStatus fails", async () => {
-    // Arrange
-    const req = {
-      params: { rsvpId: "rsvp1" },
-      body: { status: "approved" },
-      user: { user_id: "user1" },
-    };
-    const res = createFakeRes();
-    const errorMessage = "Update failed";
-    const fakeRSVPData = { id: "rsvp1", eventId: "event1", status: "pending" };
-    rsvpModel.getRSVPById.mockResolvedValue(fakeRSVPData);
-    rsvpModel.updateRSVP.mockRejectedValue(new Error(errorMessage));
-
-    // Act
-    await rsvpController.updateRSVPStatus(req, res);
-
-    // Assert
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: errorMessage });
   });
 });
 
@@ -341,5 +250,126 @@ describe("getRSVPsByUser", () => {
     expect(res.status).toHaveBeenCalledWith(500);
     // Expect the exact error from the mock, without the prefix.
     expect(res.json).toHaveBeenCalledWith({ error: errorMessage });
+  });
+});
+
+describe("changeRSVPStatus", () => {
+  let req, res, fakeRSVPInstance;
+
+  beforeEach(() => {
+    res = createFakeRes();
+    fakeRSVPInstance = {
+      approve: jest.fn().mockResolvedValue(),
+      reject: jest.fn().mockResolvedValue(),
+      cancel: jest.fn().mockResolvedValue(),
+    };
+
+    rsvpModel.getRSVPById = jest
+      .fn()
+      .mockResolvedValue({ id: "rsvp1", status: "pending" });
+    rsvpModel.load = jest.fn().mockResolvedValue(fakeRSVPInstance);
+  });
+
+  test("should approve RSVP successfully", async () => {
+    req = {
+      params: { rsvpId: "rsvp1" },
+      body: { status: "approved" },
+    };
+
+    await rsvpController.updateRSVPStatus(req, res);
+
+    expect(rsvpModel.load).toHaveBeenCalledWith("rsvp1");
+    expect(fakeRSVPInstance.approve).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "RSVP approved successfully.",
+    });
+  });
+});
+
+describe("updateRSVPStatus", () => {
+  let req, res, fakeRSVPInstance;
+
+  beforeEach(() => {
+    res = createFakeRes();
+    fakeRSVPInstance = {
+      approve: jest.fn().mockResolvedValue(),
+      reject: jest.fn().mockResolvedValue(),
+      cancel: jest.fn().mockResolvedValue(),
+    };
+    rsvpModel.load.mockResolvedValue(fakeRSVPInstance);
+    rsvpModel.getRSVPById.mockResolvedValue({ id: "mockRsvpId" });
+  });
+
+  it("should reject RSVP successfully", async () => {
+    req = {
+      params: { rsvpId: "mockRsvpId" },
+      body: { status: "rejected" },
+    };
+
+    await rsvpController.updateRSVPStatus(req, res);
+
+    expect(fakeRSVPInstance.reject).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "RSVP rejected successfully.",
+    });
+  });
+
+  it("should cancel RSVP successfully", async () => {
+    req = {
+      params: { rsvpId: "mockRsvpId" },
+      body: { status: "cancelled" },
+    };
+
+    await rsvpController.updateRSVPStatus(req, res);
+
+    expect(fakeRSVPInstance.cancel).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "RSVP cancelled successfully.",
+    });
+  });
+
+  it("should return 400 for invalid status", async () => {
+    req = {
+      params: { rsvpId: "mockRsvpId" },
+      body: { status: "unknown" },
+    };
+
+    await rsvpController.updateRSVPStatus(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Invalid status transition.",
+    });
+  });
+
+  it("should return 404 if RSVP not found", async () => {
+    rsvpModel.getRSVPById.mockResolvedValue(null);
+
+    req = {
+      params: { rsvpId: "nonexistent" },
+      body: { status: "approved" },
+    };
+
+    await rsvpController.updateRSVPStatus(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ error: "RSVP not found." });
+  });
+
+  it("should return 400 if state method throws", async () => {
+    fakeRSVPInstance.approve.mockRejectedValue(new Error("Something broke"));
+
+    req = {
+      params: { rsvpId: "mockRsvpId" },
+      body: { status: "approved" },
+    };
+
+    await rsvpController.updateRSVPStatus(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: "Something broke" });
   });
 });

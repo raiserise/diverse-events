@@ -44,10 +44,9 @@ const checkRSVP = async (req, res) => {
       exists: true,
       rsvpId: rsvp.id,
       status: rsvp.status,
-      lastCancelledAt: rsvp.data.lastCancelledAt || null,
+      lastCancelledAt: rsvp.data.lastCancelledAt ?? null,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
     res.status(500).json({ error: error.message });
   }
 };
