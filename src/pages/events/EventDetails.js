@@ -1,7 +1,7 @@
 // src/pages/events/EventDetails.js
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getAllData, getDataById, addData } from "../../api/apiService";
+import { getAllData, getDataById, addData, deleteData } from "../../api/apiService";
 import FirebaseImage from "../../components/FirebaseImage";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -12,8 +12,11 @@ import EventModal from "../../components/EventModal";
 import CustomModal from "../../components/CustomModal";
 import { InviteBase } from "../../invite/InviteBase";
 import { NotifyDecorator } from "../../invite/NotifyDecorator";
+import { useNavigate } from "react-router-dom";
+
 
 function EventDetails() {
+  const navigate = useNavigate();
   const { id } = useParams();
   const auth = getAuth();
 
@@ -213,6 +216,19 @@ function EventDetails() {
       );
     });
 
+    // Delete handler
+    const handleDelete = async () => {
+      if (!window.confirm('Are you sure you want to delete this event?')) return;
+      try {
+        await deleteData('/events', event.id, true);
+        toast.success('Event deleted successfully.');
+        navigate('/events');
+      } catch (err) {
+        console.error('Delete error:', err);
+        toast.error('Failed to delete event.');
+      }
+    };
+
   // Edit handlers
   const handleEditClick = () => {
     if (!event) return;
@@ -337,6 +353,7 @@ function EventDetails() {
             <div className="fixed bottom-6 right-6 flex gap-4">
               <button onClick={() => setIsInviteOpen(true)} className="bg-purple-500 text-white px-6 py-3 rounded-xl hover:bg-purple-600">Invite Users</button>
               <button onClick={handleEditClick} className="bg-orange-500 text-white px-6 py-3 rounded-xl hover:bg-orange-600">Edit Event</button>
+              <button onClick={handleDelete} className="bg-red-500 text-white px-6 py-3 rounded-xl hover:bg-red-600">Delete Event</button>
             </div>
           )}
 
