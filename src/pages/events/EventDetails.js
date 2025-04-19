@@ -1,292 +1,228 @@
 // src/pages/events/EventDetails.js
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getDataById, addData } from "../../api/apiService";
+import { getAllData, getDataById, addData } from "../../api/apiService";
 import FirebaseImage from "../../components/FirebaseImage";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getFirestore, updateDoc, doc, serverTimestamp } from "firebase/firestore";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import EventModal from "../../components/EventModal";
+import CustomModal from "../../components/CustomModal";
 import { InviteBase } from "../../invite/InviteBase";
 import { NotifyDecorator } from "../../invite/NotifyDecorator";
-import {
-  getFirestore,
-  updateDoc,
-  doc,
-  serverTimestamp
-} from "firebase/firestore";
-import EventModal from "../../components/EventModal";
-import {
-  getStorage,
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from "firebase/storage";
-import CustomModal from "../../components/CustomModal";
-import { getAllData } from "../../api/apiService";
 
 function EventDetails() {
   const { id } = useParams();
+  const auth = getAuth();
+
+  // State variables
   const [event, setEvent] = useState(null);
   const [organizers, setOrganizers] = useState([]);
+  const [participants, setParticipants] = useState([]);
+  const [invitedUsers, setInvitedUsers] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isRSVP, setIsRSVP] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const auth = getAuth();
   const [user, setUser] = useState(null);
-  const [participants, setParticipants] = useState([]);
-  const [cooldownRemaining, setCooldownRemaining] = useState(null);
-  const [users, setUsers] = useState([]);
-  const [isInviteOpen, setIsInviteOpen] = useState(false);
-  const [invitedUsers, setInvitedUsers] = useState(null);
+  const [isRSVP, setIsRSVP] = useState(false);
   const [canRSVP, setCanRSVP] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  // State for the edit modal and its form data
+  const [cooldownRemaining, setCooldownRemaining] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState(null);
-  // New state for image file in edit mode
   const [editImageFile, setEditImageFile] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
-  const parseFirestoreTimestamp = (timestamp) => {
-    if (timestamp?._seconds) {
-      return timestamp._seconds * 1000;
-    }
-    return 0;
-  };
+  // Derived state
+  const isEventFull = event?.maxParticipants && event.participants?.length >= event.maxParticipants;
 
+  // Auth listener
   useEffect(() => {
-    // Fetch users when invite modal is opened
-    if (isInviteOpen) {
-      getAllData("/users", false)
-        .then((data) => setUsers(data || []))
-        .catch((error) => console.error("Error fetching users:", error));
-    }
-  }, [isInviteOpen]);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
+    const unsubscribe = onAuthStateChanged(auth, setUser);
     return () => unsubscribe();
   }, [auth]);
 
+  // Fetch all users when invite modal opens
+  useEffect(() => {
+    if (isInviteOpen) {
+      getAllData("/users", false)
+        .then(data => setUsers(data || []))
+        .catch(err => console.error("Error fetching users:", err));
+    }
+  }, [isInviteOpen]);
+
+  // Fetch event details once user is known
   useEffect(() => {
     if (!user) return;
-
-    const fetchEvent = async () => {
-      try {
-        let eventData;
-        try {
-          eventData = await getDataById("/events", id, true);
-        } catch (err) {
-          if (err.message.includes("Not authorized")) {
-            eventData = await getDataById("/events", id, false);
-          } else {
-            throw err;
-          }
-        }
-
-        if (!eventData) {
-          setError("Event not found.");
-          return;
-        }
-
-        if (eventData.privacy === "private") {
-          if (!user) {
-            setError("Authentication required to view this private event.");
-            return;
-          }
-
-          const allowed =
-            (eventData.organizers || []).includes(user.uid) ||
-            (eventData.invitedUsers || []).includes(user.uid);
-          if (!allowed) {
-            setError("You are not authorized to view this private event.");
-            return;
-          }
-        }
-
-        setEvent({ id, ...eventData });
-
-        if (eventData.organizers?.length) {
-          const orgs = await Promise.all(
-            eventData.organizers.map((orgId) =>
-              getDataById("/users", orgId, true)
-            )
-          );
-          setOrganizers(orgs);
-          setInvitedUsers(eventData.invitedUsers);
-        }
-
-        if (eventData.participants?.length) {
-          const parts = await Promise.all(
-            eventData.participants.map((participantId) =>
-              getDataById("/users", participantId, true)
-            )
-          );
-          setParticipants(parts);
-        }
-      } catch (err) {
-        console.error("❌ Error fetching event:", err);
-        setError("Error loading event details");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEvent();
+    fetchEventDetails();
   }, [user, id]);
 
-  useEffect(() => {
-    if (!user || !event) return;
-
-    const checkRSVP = async () => {
-      try {
-        console.log("Checking RSVP eligibility...");
-        const response = await getDataById("/rsvp/check", id, true);
-
-        if (
-          event?.maxParticipants &&
-          event?.participants?.length >= event.maxParticipants
-        ) {
-          console.log("Event is full.");
-          setCanRSVP(false);
-          setIsRSVP(false);
-          //setError("Event is full. RSVP is not allowed.");
+  const fetchEventDetails = async () => {
+    try {
+      const eventData = await fetchEventById(id);
+      if (!eventData) {
+        setError("Event not found.");
+        return;
+      }
+      // Private event authorization
+      if (eventData.privacy === "private") {
+        if (!user) {
+          setError("Authentication required to view this private event.");
           return;
         }
-
-        if (response.exists && response.status === "cancelled") {
-          const lastCancelledAt = parseFirestoreTimestamp(
-            response.lastCancelledAt
-          );
-          const cooldownOver = Date.now() - lastCancelledAt >= 30 * 60 * 1000;
-          if (!cooldownOver) {
-            const remainingTime = Math.ceil(
-              (30 * 60 * 1000 - (Date.now() - lastCancelledAt)) / 1000
-            );
-            console.log(
-              "RSVP cooldown active, remaining:",
-              remainingTime,
-              "seconds"
-            );
-            setCooldownRemaining(remainingTime);
-            setCanRSVP(false);
-            return;
-          } else {
-            setCanRSVP(true);
-            setIsRSVP(false);
-            return;
-          }
-        } else if (response.exists) {
-          setIsRSVP(true);
-          setCanRSVP(false);
-        } else {
-          setIsRSVP(false);
-          setCanRSVP(true);
+        const allowed = eventData.organizers?.includes(user.uid) || eventData.invitedUsers?.includes(user.uid);
+        if (!allowed) {
+          setError("You are not authorized to view this private event.");
+          return;
         }
-      } catch (error) {
-        console.error("RSVP check failed:", error);
       }
-    };
+      setEvent({ id, ...eventData });
+      setInvitedUsers(eventData.invitedUsers || []);
+      // Fetch organizers details
+      if (eventData.organizers?.length) {
+        const orgs = await Promise.all(
+          eventData.organizers.map(orgId => getDataById("/users", orgId, true))
+        );
+        setOrganizers(orgs);
+      }
+      // Fetch participants details
+      if (eventData.participants?.length) {
+        const parts = await Promise.all(
+          eventData.participants.map(pid => getDataById("/users", pid, true))
+        );
+        setParticipants(parts);
+      }
+    } catch (err) {
+      console.error("Error loading event:", err);
+      setError("Error loading event details");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    checkRSVP();
+  const fetchEventById = async eventId => {
+    try {
+      return await getDataById("/events", eventId, true);
+    } catch (err) {
+      if (err.message.includes("Not authorized")) {
+        return await getDataById("/events", eventId, false);
+      }
+      throw err;
+    }
+  };
+
+  const parseTimestamp = ts => (ts?._seconds ? ts._seconds * 1000 : 0);
+
+  // Check RSVP status
+  useEffect(() => {
+    if (!user || !event) return;
+    checkRSVPStatus();
   }, [user, event, id]);
 
-  const isEventFull =
-    event?.maxParticipants &&
-    event?.participants?.length >= event.maxParticipants;
+  const checkRSVPStatus = async () => {
+    try {
+      const resp = await getDataById("/rsvp/check", id, true);
+      if (isEventFull) {
+        setCanRSVP(false);
+        setIsRSVP(false);
+        return;
+      }
+      if (resp.exists && resp.status === "cancelled") {
+        const last = parseTimestamp(resp.lastCancelledAt);
+        const cooldown = 30 * 60 * 1000;
+        const diff = Date.now() - last;
+        if (diff < cooldown) {
+          setCooldownRemaining(Math.ceil((cooldown - diff) / 1000));
+          setCanRSVP(false);
+        } else {
+          setCanRSVP(true);
+        }
+      } else if (resp.exists) {
+        setIsRSVP(true);
+        setCanRSVP(false);
+      } else {
+        setCanRSVP(true);
+      }
+    } catch (err) {
+      console.error("RSVP check error:", err);
+    }
+  };
 
+  // Cooldown timer
   useEffect(() => {
-    let interval;
+    let timer;
     if (cooldownRemaining > 0) {
-      interval = setInterval(() => {
-        setCooldownRemaining((prev) => {
+      timer = setInterval(() => {
+        setCooldownRemaining(prev => {
           if (prev <= 1) {
-            clearInterval(interval);
-            setCanRSVP(true); // 👈 enable RSVP
+            clearInterval(timer);
+            setCanRSVP(true);
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => clearInterval(timer);
   }, [cooldownRemaining]);
 
+  // RSVP handler
   const handleRSVP = async () => {
     if (!event || isRSVP || submitting) return;
-
     try {
       setSubmitting(true);
-
-      // 👇 Check if event is full first
-      if (
-        event.maxParticipants &&
-        event.participants?.length >= event.maxParticipants
-      ) {
+      if (isEventFull) {
         toast.error("Event is full. RSVP is not allowed.");
         return;
       }
-
-      // 👀 Check if RSVP exists to handle cooldown
-      const response = await getDataById("/rsvp/check", id, true);
-      console.log("Check rsvp", response);
-
-      if (response.exists && response.status === "cancelled") {
-        const lastCancelledTime = parseFirestoreTimestamp(
-          response.lastCancelledAt
-        );
-        const cooldownDuration = 30 * 60 * 1000;
-        const timeDiff = Date.now() - lastCancelledTime;
-
-        if (timeDiff < cooldownDuration) {
-          const remainingTime = Math.ceil(
-            (cooldownDuration - timeDiff) / 60000
-          );
-          toast.error(`You can RSVP again in ${remainingTime} minutes.`);
+      const resp = await getDataById("/rsvp/check", id, true);
+      if (resp.exists && resp.status === "cancelled") {
+        const last = parseTimestamp(resp.lastCancelledAt);
+        if (Date.now() - last < 30 * 60 * 1000) {
+          toast.error(`Please wait before RSVPing again.`);
           return;
         }
       }
-
-      // 👇 Always use addData — backend handles create vs reapply
-      await addData(
-        "/rsvp",
-        {
-          eventId: event.id,
-          organizers: event.organizers,
-          createdAt: new Date(), // Optional, server also sets timestamp
-        },
-        true
-      );
-
+      await addData("/rsvp", { eventId: event.id, organizers: event.organizers }, true);
       setIsRSVP(true);
       toast.success("RSVP successful!");
       setCanRSVP(false);
-    } catch (error) {
-      console.error("RSVP error:", error);
-      toast.error("RSVP failed. Please try again.");
+    } catch (err) {
+      console.error("RSVP error:", err);
+      toast.error("RSVP failed.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  //const canRSVP = !isRSVP && !submitting && cooldownRemaining <= 0;
+  // Upload image helper
+  const uploadImage = file =>
+    new Promise((resolve, reject) => {
+      const storage = getStorage();
+      const storageRef = ref(storage, `events/${file.name}`);
+      const task = uploadBytesResumable(storageRef, file);
+      task.on(
+        "state_changed",
+        null,
+        reject,
+        () => getDownloadURL(task.snapshot.ref).then(resolve).catch(reject)
+      );
+    });
 
+  // Edit handlers
   const handleEditClick = () => {
+    if (!event) return;
     setEditFormData({
       title: event.title || "",
       description: event.description || "",
       category: Array.isArray(event.category) ? event.category.join(", ") : "",
       location: event.location || "",
-      startDate:
-        event.startDate && event.startDate._seconds
-          ? new Date(event.startDate._seconds * 1000).toISOString().slice(0, 16)
-          : "",
-      endDate:
-        event.endDate && event.endDate._seconds
-          ? new Date(event.endDate._seconds * 1000).toISOString().slice(0, 16)
-          : "",
+      startDate: event.startDate?._seconds ? new Date(event.startDate._seconds * 1000).toISOString().slice(0,16) : "",
+      endDate: event.endDate?._seconds ? new Date(event.endDate._seconds * 1000).toISOString().slice(0,16) : "",
       language: event.language || "",
       acceptsRSVP: event.acceptsRSVP || false,
       featuredImage: event.featuredImage || "",
@@ -295,500 +231,154 @@ function EventDetails() {
       format: event.format || "",
       terms: event.terms || "",
       status: event.status || "active",
-      inviteLink: event.inviteLink || "", // Include inviteLink field
+      inviteLink: event.inviteLink || ""
     });
     setEditImageFile(null);
     setIsEditModalOpen(true);
   };
 
-  const handleEditChange = (e) => {
+  const handleEditChange = e => {
     const { name, value, type, checked } = e.target;
-    setEditFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    setEditFormData(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   };
 
-  const handleEditFileChange = (e) => {
-    if (e.target.files[0]) {
-      setEditImageFile(e.target.files[0]);
-    }
+  const handleEditFileChange = e => {
+    if (e.target.files?.[0]) setEditImageFile(e.target.files[0]);
   };
 
-  const uploadImage = (file) => {
-    return new Promise((resolve, reject) => {
-      const storage = getStorage();
-      const storageRef = ref(storage, `events/${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on(
-        "state_changed",
-        null,
-        (error) => reject(error),
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref)
-            .then((url) => resolve(url))
-            .catch((err) => reject(err));
-        }
-      );
-    });
-  };
-
-  const handleEditSubmit = async (e) => {
+  const handleEditSubmit = async e => {
     e.preventDefault();
     if (!user) {
-      toast.error("You must be logged in to edit an event.");
+      toast.error("Login required to edit.");
       return;
     }
-    const updatedStartDate = editFormData.startDate
-      ? new Date(editFormData.startDate)
-      : null;
-    const updatedEndDate = editFormData.endDate
-      ? new Date(editFormData.endDate)
-      : null;
-    let newFeaturedImage = editFormData.featuredImage;
+    let newImage = editFormData.featuredImage;
     if (editImageFile) {
-      try {
-        newFeaturedImage = await uploadImage(editImageFile);
-      } catch (err) {
-        console.error("Error uploading image:", err);
-        toast.error("Image upload failed. Using previous image.");
-      }
+      try { newImage = await uploadImage(editImageFile); }
+      catch { toast.error("Image upload failed. Keeping old image."); }
     }
-    const updatedData = {
+    const updated = {
       ...editFormData,
-      category: editFormData.category.split(",").map((cat) => cat.trim()),
+      category: editFormData.category.split(",").map(c => c.trim()),
       updatedAt: serverTimestamp(),
-      startDate: updatedStartDate,
-      endDate: updatedEndDate,
-      featuredImage: newFeaturedImage,
+      startDate: editFormData.startDate ? new Date(editFormData.startDate) : null,
+      endDate: editFormData.endDate ? new Date(editFormData.endDate) : null,
+      featuredImage: newImage
     };
-    const db = getFirestore();
     try {
-      await updateDoc(doc(db, "events", event.id), updatedData);
-      toast.success("Event updated successfully!");
+      const db = getFirestore();
+      await updateDoc(doc(db, "events", event.id), updated);
+      toast.success("Event updated!");
       setIsEditModalOpen(false);
       window.location.reload();
-    } catch (error) {
-      console.error("Error updating event:", error);
-      toast.error("Error updating event. Please try again.");
+    } catch (err) {
+      console.error("Update error:", err);
+      toast.error("Failed to update event.");
     }
   };
 
-  const [showAll, setShowAll] = useState(false);
-  const visibleParticipants = showAll
-    ? participants
-    : participants.slice(0, 10);
-
-  if (loading)
-    return (
-      <div className="max-w-5xl mx-auto p-6">
-        <div className="animate-pulse bg-white shadow-lg rounded-lg">
-          <div className="h-64 bg-gray-300 rounded-lg mb-4"></div>
-          <div className="space-y-4 p-4">
-            <div className="h-8 bg-gray-300 rounded"></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="h-48 bg-gray-300 rounded"></div>
-              <div className="h-48 bg-gray-300 rounded"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-
-  if (error)
-    return (
-      <div className="max-w-5xl mx-auto p-6 text-center">
-        <p className="text-red-500">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Try Again
-        </button>
-      </div>
-    );
-
-  if (!event)
-    return (
-      <div className="max-w-5xl mx-auto p-6 text-center">
-        <p className="text-gray-500">No event found</p>
-      </div>
-    );
-
-  // Prepare the external invite URL.
-  // If the invite link doesn't start with "http", prepend "http://"
-  const inviteURL =
-    event.inviteLink && !event.inviteLink.startsWith("http")
-      ? `http://${event.inviteLink}`
-      : event.inviteLink;
-
+  // Render
   return (
-    <div className="max-w-5xl mx-auto p-6 bg-white shadow-lg rounded-lg relative">
-      {/* Featured Image */}
-      {event.featuredImage ? (
-        <FirebaseImage
-          path={event.featuredImage}
-          alt={event.title}
-          className="w-full h-64 object-cover rounded-lg mb-4"
-        />
+    <div className="max-w-5xl mx-auto p-6">
+      {loading ? (
+        <div className="animate-pulse">Loading event...</div>
+      ) : error ? (
+        <div className="text-center text-red-500">{error}</div>
       ) : (
-        <p className="text-gray-500">No image available</p>
-      )}
-
-      {/* Event Title & Status */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">{event.title}</h1>
-        <div className="flex items-center space-x-4">
-          <span
-            className={`px-4 py-2 rounded-lg text-white ${
-              event.status === "active" ? "bg-green-500" : "bg-red-500"
-            }`}
-          >
-            {event.status.toUpperCase()}
-          </span>
-          {event.acceptsRSVP && (
-            <span className="px-4 py-2 bg-blue-500 text-white rounded-lg">
-              RSVP Available
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Event Details Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-        <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            Event Overview
-          </h3>
-          <div className="space-y-4">
-            <p>
-              <strong className="text-gray-900">Description:</strong>{" "}
-              {event.description}
-            </p>
-            <p>
-              <strong className="text-gray-900">Privacy:</strong>{" "}
-              {event.privacy.charAt(0).toUpperCase() + event.privacy.slice(1)}
-            </p>
-            {event.terms && (
-              <p>
-                <strong className="text-gray-900">Terms:</strong> {event.terms}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            Event Details
-          </h3>
-          <div className="space-y-4">
-            <p>
-              <strong className="text-gray-900">Category:</strong>{" "}
-              {Array.isArray(event.category)
-                ? event.category.map((cat, index) => (
-                    <span
-                      key={index}
-                      className="bg-blue-200 text-blue-800 px-2 py-1 rounded mr-2 mb-2 inline-block"
-                    >
-                      {cat}
-                    </span>
-                  ))
-                : "No categories"}
-            </p>
-            <p>
-              <strong className="text-gray-900">Event Type:</strong>{" "}
-              {event.format}
-            </p>
-            <p>
-              <strong className="text-gray-900">Language:</strong>{" "}
-              {event.language}
-            </p>
-            <p>
-              <strong className="text-gray-900">Max Participants:</strong>{" "}
-              {event.maxParticipants}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Conditionally render Invite Link only if format is "Online" */}
-      {event.format === "Online" && (
-        <div className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            Invite Link
-          </h3>
-          <p className="text-sm text-blue-600">
-            {event.inviteLink ? (
-              <a href={inviteURL} target="_blank" rel="noopener noreferrer">
-                {event.inviteLink}
-              </a>
-            ) : (
-              "No invite link provided."
-            )}
-          </p>
-        </div>
-      )}
-
-      {/* Date & Participation Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-        <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">Schedule</h3>
-          <div className="space-y-4">
-            <p>
-              <strong className="text-gray-900">Start Date:</strong>{" "}
-              {event.startDate?._seconds
-                ? new Date(event.startDate._seconds * 1000).toLocaleString(
-                    "en-US",
-                    {
-                      timeZone: "Asia/Shanghai",
-                      dateStyle: "medium",
-                      timeStyle: "medium",
-                    }
-                  )
-                : "N/A"}
-            </p>
-            <p>
-              <strong className="text-gray-900">End Date:</strong>{" "}
-              {event.endDate?._seconds
-                ? new Date(event.endDate._seconds * 1000).toLocaleString(
-                    "en-US",
-                    {
-                      timeZone: "Asia/Shanghai",
-                      dateStyle: "medium",
-                      timeStyle: "medium",
-                    }
-                  )
-                : "N/A"}
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            Participation
-          </h3>
-          <div className="space-y-4">
-            <p>
-              <strong className="text-gray-900">RSVP Status:</strong>{" "}
-              {event.acceptsRSVP ? "Open" : "Closed"}
-            </p>
-            <p>
-              <strong className="text-gray-900">Participant Count:</strong>{" "}
-              {event.participants?.length || 0}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Organizer & Participant Info */}
-      <div className="mb-8">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">Organizers</h3>
-        <div className="flex flex-wrap gap-4">
-          {organizers.map((org) => (
-            <div key={org.id} className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden">
-                {org.avatar ? (
-                  <FirebaseImage
-                    path={org.avatar}
-                    alt={org.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                    <span className="text-gray-600">{org.name?.[0]}</span>
-                  </div>
-                )}
-              </div>
-              <div>
-                <p className="font-medium">{org.name || "Unknown Organizer"}</p>
-                {org.contact && (
-                  <p className="text-sm text-gray-600">{org.contact}</p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {visibleParticipants.length > 0 ? (
         <>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            List of Participants
-          </h3>
-          <ul className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {visibleParticipants.map((participant) => (
-              <li
-                key={participant.id}
-                className="bg-gray-100 p-4 rounded-lg text-center hover:bg-gray-200 transition"
-              >
-                <p className="font-medium text-gray-700">
-                  {participant.name !== "Unknown"
-                    ? participant.name
-                    : "Name not available"}
-                </p>
-                <p className="text-sm text-gray-600">Confirmed</p>
-              </li>
+          {/* Featured image */}
+          {event.featuredImage && (
+            <FirebaseImage path={event.featuredImage} alt={event.title} className="w-full h-64 object-cover rounded-lg mb-4" />
+          )}
+          {/* Title & Description */}
+          <h1 className="text-3xl font-bold mb-2">{event.title}</h1>
+          <p className="text-gray-700 mb-6">{event.description}</p>
+          {/* Status & RSVP Available */}
+          <div className="flex gap-4 mb-6">
+            <span className={`px-4 py-2 rounded-full text-white ${event.status === "active" ? "bg-green-500" : "bg-red-500"}`}> {event.status.toUpperCase()} </span>
+            {event.acceptsRSVP && <span className="px-4 py-2 bg-blue-500 text-white rounded-full">RSVP Open</span>}
+          </div>
+          {/* RSVP Button */}
+          <button onClick={handleRSVP} disabled={submitting || (!canRSVP && !isRSVP) || isEventFull} className={`w-full py-3 text-white font-semibold mb-8 rounded-lg ${
+            isRSVP ? "bg-green-500 cursor-default" :
+            isEventFull ? "bg-red-400 cursor-not-allowed" :
+            canRSVP ? "bg-blue-500 hover:bg-blue-600" : "bg-gray-400 cursor-not-allowed"
+          }`}>
+            {submitting ? "Submitting..." : isRSVP ? "RSVP Confirmed" : isEventFull ? "Event Full" : canRSVP ? "RSVP Now" : `Wait ${Math.floor(cooldownRemaining/60)}m ${cooldownRemaining%60}s`}
+          </button>
+
+          {/* Organizers List */}
+          <h2 className="text-2xl font-semibold mb-4">Organizers</h2>
+          <div className="flex flex-wrap gap-4 mb-8">
+            {organizers.map(org => (
+              <div key={org.id} className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
+                  {org.avatar ? <FirebaseImage path={org.avatar} alt={org.name} className="w-full h-full object-cover" /> : org.name[0]}
+                </div>
+                <div>
+                  <p className="font-medium">{org.name}</p>
+                  {org.contact && <p className="text-sm text-gray-600">{org.contact}</p>}
+                </div>
+              </div>
             ))}
-          </ul>
-          {participants.length > 10 && (
-            <button
-              className="mt-4 text-blue-500 hover:underline text-sm"
-              onClick={() => setShowAll((prev) => !prev)}
-            >
-              {showAll ? "Show Less" : `Show All (${participants.length})`}
-            </button>
+          </div>
+
+          {/* Participants List */}
+          <h2 className="text-2xl font-semibold mb-4">Participants ({participants.length})</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            {(showAll ? participants : participants.slice(0,10)).map(p => (
+              <div key={p.id} className="p-4 bg-gray-100 rounded-lg text-center">{p.name || 'Unknown'}</div>
+            ))}
+          </div>
+          {participants.length > 10 && <button onClick={() => setShowAll(prev => !prev)} className="text-blue-500 hover:underline mb-8">{showAll ? "Show Less" : "Show All"}</button>}
+
+          {/* Organizer Actions */}
+          {organizers.some(o => o.id === user?.uid) && (
+            <div className="fixed bottom-6 right-6 flex gap-4">
+              <button onClick={() => setIsInviteOpen(true)} className="bg-purple-500 text-white px-6 py-3 rounded-xl hover:bg-purple-600">Invite Users</button>
+              <button onClick={handleEditClick} className="bg-orange-500 text-white px-6 py-3 rounded-xl hover:bg-orange-600">Edit Event</button>
+            </div>
+          )}
+
+          {/* Invite Modal */}
+          {isInviteOpen && (
+            <CustomModal isOpen={isInviteOpen} onRequestClose={() => setIsInviteOpen(false)}>
+              <div className="p-4">
+                <h3 className="text-xl font-semibold mb-2">Invite Users</h3>
+                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 border rounded mb-4" placeholder="Search by name..." />
+                <div className="max-h-80 overflow-y-auto space-y-2">
+                  {users.filter(u => !event.organizers.includes(u.id) && u.name.toLowerCase().includes(searchTerm.toLowerCase())).map(u => (
+                    <div key={u.id} className="flex justify-between items-center p-2 border-b">
+                      <div><p className="font-medium">{u.name}</p><p className="text-sm text-gray-600">{u.email}</p></div>
+                      {invitedUsers.includes(u.id) ? <span className="text-green-500">Invited</span> : <button onClick={async () => {
+                        try {
+                          const base = new InviteBase(event.id, event.title);
+                          const dec = new NotifyDecorator(base);
+                          await dec.invite(u, event);
+                          setInvitedUsers(prev => [...prev, u.id]);
+                          toast.success("User invited!");
+                        } catch { toast.error("Invite failed."); }
+                      }} className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">Invite</button>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CustomModal>
+          )}
+
+          {/* Edit Modal */}
+          {isEditModalOpen && (
+            <EventModal
+              isOpen={isEditModalOpen}
+              onClose={() => setIsEditModalOpen(false)}
+              modalTitle="Edit Event"
+              formData={editFormData}
+              onChange={handleEditChange}
+              onFileChange={handleEditFileChange}
+              onSubmit={handleEditSubmit}
+            />
           )}
         </>
-      ) : (
-        <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            No Participants Yet
-          </h3>
-        </div>
-      )}
-
-      {/* RSVP Section */}
-      {event.acceptsRSVP && (
-        <div className="fixed md:relative bottom-0 left-0 right-0 md:mb-8 bg-white md:bg-transparent p-4 md:p-0 md:mt-8">
-          {organizers.some((org) => org.id === user?.uid) ? (
-            <p className="text-yellow-600 text-center py-3">
-              Organizers cannot RSVP to their own events
-            </p>
-          ) : (
-            <>
-              <button
-                onClick={handleRSVP}
-                disabled={submitting || (!canRSVP && !isRSVP) || isEventFull}
-                className={`w-full px-6 py-3 rounded-lg transition duration-200 ${
-                  isRSVP
-                    ? "bg-green-500 cursor-default"
-                    : isEventFull
-                      ? "bg-red-400 cursor-not-allowed"
-                      : canRSVP
-                        ? "bg-blue-400 hover:bg-blue-500"
-                        : "bg-gray-400 cursor-not-allowed"
-                }`}
-              >
-                {submitting
-                  ? "Submitting..."
-                  : isRSVP
-                    ? "RSVP Confirmed"
-                    : isEventFull
-                      ? "Event is full"
-                      : canRSVP
-                        ? "RSVP Now"
-                        : `You can RSVP again in ${Math.floor(cooldownRemaining / 60)}m ${
-                            cooldownRemaining % 60
-                          }s`}
-              </button>
-              {!canRSVP && cooldownRemaining > 0 && isRSVP && (
-                <p className="text-red-500 text-center text-sm mt-2">
-                  You can RSVP again in {Math.floor(cooldownRemaining / 60)}m{" "}
-                  {cooldownRemaining % 60}s
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      )}
-      {/* Button Container */}
-      <div className="fixed bottom-6 right-6 flex gap-4">
-        {/* Invite Button for Organizers */}
-        {organizers.some((org) => org.id === user?.uid) && (
-          <button
-            onClick={() => setIsInviteOpen(true)}
-            className="bg-purple-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-purple-600 transition"
-          >
-            Invite Users
-          </button>
-        )}
-
-        {/* Edit Button for Organizers */}
-        {organizers.some((org) => org.id === user?.uid) && (
-          <button
-            onClick={handleEditClick}
-            className="bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-orange-600 transition"
-          >
-            Edit Event
-          </button>
-        )}
-      </div>
-      {/* Invite Users Modal */}
-      <CustomModal
-        isOpen={isInviteOpen}
-        onRequestClose={() => setIsInviteOpen(false)}
-        contentLabel="Invite Users"
-        className="fixed inset-0 flex items-center justify-center z-50"
-        overlayClassName="fixed inset-0 bg-black bg-opacity-50"
-      >
-        <div className="bg-white rounded-lg shadow-lg w-full max-w-6xl h-[80vh] flex flex-col p-6">
-          <h2 className="text-2xl font-bold mb-4">Invite Users</h2>
-
-          {/* Search Input */}
-          <input
-            type="text"
-            placeholder="Search users..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="mb-4 p-3 border rounded w-full"
-          />
-
-          {/* User List */}
-          <ul className="flex-1 overflow-y-auto w-full space-y-2">
-            {users
-              .filter(
-                (u) =>
-                  !event.organizers.includes(u.id) &&
-                  u.name?.includes(searchTerm) // Case-sensitive
-              )
-              .map((u) => (
-                <li
-                  key={u.id}
-                  className="flex items-center justify-between p-2 border-b gap-x-40"
-                >
-                  <div className="flex-1 mr-4">
-                    <p className="font-semibold">{u.name}</p>
-                    <p className="text-sm text-gray-600">{u.email}</p>
-                  </div>
-                  {invitedUsers.includes(u.id) ? (
-                    <span className="text-green-500 font-semibold">
-                      Invited
-                    </span>
-                  ) : (
-                    <button
-                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                      onClick={async () => {
-                        const base = new InviteBase(event.id, event.title); 
-                        const decorated = new NotifyDecorator(base);
-                      
-                        try {
-                          await decorated.invite(u, event);
-                          setInvitedUsers((prev) => [...prev, u.id]);
-                        } catch (err) {
-                          console.error("Error inviting user:", err);
-                          toast.error("Failed to invite user.");
-                        }
-                      }}
-                    >
-                      Invite
-                    </button>
-                  )}
-                </li>
-              ))}
-          </ul>
-        </div>
-      </CustomModal>
-      {/* Shared Modal for Editing */}
-      {isEditModalOpen && (
-        <EventModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          modalTitle="Edit Event"
-          formData={editFormData}
-          onChange={handleEditChange}
-          onFileChange={handleEditFileChange}
-          onSubmit={handleEditSubmit}
-        />
       )}
     </div>
   );
