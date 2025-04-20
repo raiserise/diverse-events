@@ -64,12 +64,13 @@ function MyEvents() {
         .setStartDate(formattedStart)
         .setEndDate(formattedEnd)
         .setFeaturedImage(evt.featuredImage)
-        .setLocation(evt.location);
+        .setLocation(evt.location)
+        .setUrl(evt.inviteLink);
 
       // conditional zoom link
-      if (evt.format === "Online" && evt.zoomLink) {
-        builder = builder.setZoomLink(evt.zoomLink);
-      }
+      // if (evt.format === "Online" && evt.zoomLink) {
+      //   builder = builder.setZoomLink(evt.zoomLink);
+      // }
 
       return builder.build();
     });

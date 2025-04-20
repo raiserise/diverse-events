@@ -67,8 +67,13 @@ export default class EventBuilder {
     setLocation(location) {
       this.event.location = location;
       return this;
-    } 
-  
+    }
+    setUrl(url) {
+      if (this.event.format === "Online") {
+        this.event.inviteLink = url;
+      }
+      return this;
+    }
     build() {
       return { ...this.event };
     }
