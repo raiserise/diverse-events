@@ -385,33 +385,46 @@ function EventDetails() {
   const visibleParticipants = participants.slice(0, 10);
 
 /**
- * Date Helper, Accepts either:
- *   • Firestore Timestamp object { _seconds, _nanoseconds }
- *   • ISO‑string or JS Date
- * Returns a nicely formatted date or “N/A”.
+ * Shows the exact UTC date & time you saved,
+ * accepting Firestore Timestamps, ISO‑strings, or JS Dates.
  */
-const formatEventDate = (field) => {
+const formatSavedDate = (field) => {
   if (!field) return "N/A";
 
-  // Firestore Timestamp
+  // Firestore Timestamp → JS Date
+  let date;
   if (field._seconds != null) {
-    return new Date(field._seconds * 1000).toLocaleString("en-US", {
-      timeZone: "Asia/Shanghai",
-      dateStyle: "medium",
-      timeStyle: "medium",
-    });
+    date = new Date(field._seconds * 1000);
+  }
+  // ISO‑string
+  else if (typeof field === "string") {
+    date = new Date(field);
+  }
+  // JS Date
+  else if (field instanceof Date) {
+    date = field;
+  }
+  else {
+    return "N/A";
   }
 
-  // ISO‑string (or native Date)
-  const d = new Date(field);
-  if (isNaN(d.getTime())) return "N/A";
+  if (isNaN(date.getTime())) return "N/A";
 
-  return d.toLocaleString("en-US", {
-    timeZone: "Asia/Shanghai",
-    dateStyle: "medium",
-    timeStyle: "medium",
+  try {
+    // ASCII hyphen in locale, UTC to freeze the saved moment
+    return date.toLocaleString("en-SG", {
+      timeZone: "UTC",
+      dateStyle: "medium",
+      timeStyle: "short",
     });
-  };
+  } catch {
+    // fallback “YYYY‑MM‑DD HH:MM”
+    const iso = date.toISOString();
+    return iso.slice(0, 10) + " " + iso.slice(11, 16);
+  }
+};
+
+
 
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white shadow-lg rounded-lg relative">
@@ -518,11 +531,11 @@ const formatEventDate = (field) => {
           <div className="space-y-4">
             <p>
               <strong className="text-gray-900">Start Date:</strong>{" "}
-              {formatEventDate(event.startDate)}
+              {formatSavedDate(event.startDate)}
             </p>
             <p>
               <strong className="text-gray-900">End Date:</strong>{" "}
-              {formatEventDate(event.endDate)}
+              {formatSavedDate(event.endDate)}
             </p>
           </div>
         </div>
