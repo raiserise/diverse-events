@@ -7,11 +7,17 @@ import { MemoryRouter } from "react-router-dom";
 // Mock the custom hook GetEventLogic
 jest.mock("../../../Logic/EventsLogic/GetEventLogic", () => jest.fn());
 
-// Mock FirebaseImage so it just renders an <img>
 jest.mock("../../../components/FirebaseImage", () => {
-  return ({ path, alt, className }) => (
-    <img src={path} alt={alt} className={className} data-testid="firebase-image" />
+  const FirebaseImageMock = ({ path, alt, className }) => (
+    <img
+      src={path}
+      alt={alt}
+      className={className}
+      data-testid="firebase-image"
+    />
   );
+  FirebaseImageMock.displayName = "FirebaseImageMock";
+  return FirebaseImageMock;
 });
 
 // Import the mocked hook so we can set its return values:
@@ -62,9 +68,24 @@ describe("Events Component", () => {
 
   test("renders events when events are loaded", () => {
     const eventsData = [
-      { id: "1", title: "Event One", format: "Online", featuredImage: "image1.jpg" },
-      { id: "2", title: "Event Two", format: "Physical", featuredImage: "image2.jpg" },
-      { id: "3", title: "Another Event", format: "Hybrid", featuredImage: "image3.jpg" },
+      {
+        id: "1",
+        title: "Event One",
+        format: "Online",
+        featuredImage: "image1.jpg",
+      },
+      {
+        id: "2",
+        title: "Event Two",
+        format: "Physical",
+        featuredImage: "image2.jpg",
+      },
+      {
+        id: "3",
+        title: "Another Event",
+        format: "Hybrid",
+        featuredImage: "image3.jpg",
+      },
     ];
     GetEventLogic.mockReturnValue({
       loading: false,
@@ -86,8 +107,18 @@ describe("Events Component", () => {
 
   test("filters events by title based on search query", () => {
     const eventsData = [
-      { id: "1", title: "React Conference", format: "Online", featuredImage: "image1.jpg" },
-      { id: "2", title: "Vue Conference", format: "Physical", featuredImage: "image2.jpg" },
+      {
+        id: "1",
+        title: "React Conference",
+        format: "Online",
+        featuredImage: "image1.jpg",
+      },
+      {
+        id: "2",
+        title: "Vue Conference",
+        format: "Physical",
+        featuredImage: "image2.jpg",
+      },
     ];
     GetEventLogic.mockReturnValue({
       loading: false,
@@ -116,8 +147,18 @@ describe("Events Component", () => {
 
   test("filters events by format using select dropdown", () => {
     const eventsData = [
-      { id: "1", title: "Event One", format: "Online", featuredImage: "image1.jpg" },
-      { id: "2", title: "Event Two", format: "Physical", featuredImage: "image2.jpg" },
+      {
+        id: "1",
+        title: "Event One",
+        format: "Online",
+        featuredImage: "image1.jpg",
+      },
+      {
+        id: "2",
+        title: "Event Two",
+        format: "Physical",
+        featuredImage: "image2.jpg",
+      },
     ];
     GetEventLogic.mockReturnValue({
       loading: false,
@@ -146,8 +187,18 @@ describe("Events Component", () => {
 
   test("displays 'No events found' when search/filter yields no results", () => {
     const eventsData = [
-      { id: "1", title: "React Conference", format: "Online", featuredImage: "image1.jpg" },
-      { id: "2", title: "Vue Conference", format: "Physical", featuredImage: "image2.jpg" },
+      {
+        id: "1",
+        title: "React Conference",
+        format: "Online",
+        featuredImage: "image1.jpg",
+      },
+      {
+        id: "2",
+        title: "Vue Conference",
+        format: "Physical",
+        featuredImage: "image2.jpg",
+      },
     ];
     GetEventLogic.mockReturnValue({
       loading: false,

@@ -1,4 +1,4 @@
-const { db } = require("../config/firebase");
+const {db} = require("../config/firebase");
 const admin = require("firebase-admin");
 const {
   PendingState,
@@ -54,7 +54,7 @@ class RSVP {
   // Custom serialization to handle circular references
   toJSON() {
     // eslint-disable-next-line no-unused-vars
-    const { state, ...rest } = this; // Exclude the `state` property
+    const {state, ...rest} = this; // Exclude the `state` property
     return rest;
   }
 
@@ -78,11 +78,11 @@ class RSVP {
     }
 
     const existingRSVP = await db
-      .collection("rsvps")
-      .where("eventId", "==", eventId)
-      .where("userId", "==", userId)
-      .limit(1)
-      .get();
+        .collection("rsvps")
+        .where("eventId", "==", eventId)
+        .where("userId", "==", userId)
+        .limit(1)
+        .get();
 
     if (!existingRSVP.empty) {
       const rsvpDoc = existingRSVP.docs[0];
@@ -167,9 +167,9 @@ class RSVP {
 
   static async getRSVPsByEvent(eventId) {
     const snapshot = await db
-      .collection("rsvps")
-      .where("eventId", "==", eventId)
-      .get();
+        .collection("rsvps")
+        .where("eventId", "==", eventId)
+        .get();
 
     // Return plain objects instead of RSVP instances
     return snapshot.docs.map((doc) => ({
@@ -180,15 +180,15 @@ class RSVP {
 
   static async findRSVP(eventId, userId) {
     const snapshot = await db
-      .collection("rsvps")
-      .where("eventId", "==", eventId)
-      .where("userId", "==", userId)
-      .limit(1)
-      .get();
+        .collection("rsvps")
+        .where("eventId", "==", eventId)
+        .where("userId", "==", userId)
+        .limit(1)
+        .get();
 
-    return snapshot.empty
-      ? null
-      : new RSVP(snapshot.docs[0].id, snapshot.docs[0].data());
+    return snapshot.empty ?
+      null :
+      new RSVP(snapshot.docs[0].id, snapshot.docs[0].data());
   }
 
   static countRSVPsByStatus(rsvps, status) {
@@ -197,33 +197,33 @@ class RSVP {
 
   static async getUserRSVPs(userId) {
     const snapshot = await db
-      .collection("rsvps")
-      .where("userId", "==", userId)
-      .get();
+        .collection("rsvps")
+        .where("userId", "==", userId)
+        .get();
 
     return snapshot.docs
-      .map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toMillis?.() ?? 0,
-          lastCancelledAt: data.lastCancelledAt?.toMillis?.() ?? 0,
-        };
-      })
-      .sort((a, b) => {
+        .map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toMillis?.() ?? 0,
+            lastCancelledAt: data.lastCancelledAt?.toMillis?.() ?? 0,
+          };
+        })
+        .sort((a, b) => {
         // Sort pending first
-        if (a.status === "pending" && b.status !== "pending") return -1;
-        if (a.status !== "pending" && b.status === "pending") return 1;
+          if (a.status === "pending" && b.status !== "pending") return -1;
+          if (a.status !== "pending" && b.status === "pending") return 1;
 
-        // Then by lastCancelledAt descending
-        if (b.lastCancelledAt !== a.lastCancelledAt) {
-          return b.lastCancelledAt - a.lastCancelledAt;
-        }
+          // Then by lastCancelledAt descending
+          if (b.lastCancelledAt !== a.lastCancelledAt) {
+            return b.lastCancelledAt - a.lastCancelledAt;
+          }
 
-        // Then by createdAt descending
-        return b.createdAt - a.createdAt;
-      });
+          // Then by createdAt descending
+          return b.createdAt - a.createdAt;
+        });
   }
 
   static async deleteRSVPsByEventId(eventId) {

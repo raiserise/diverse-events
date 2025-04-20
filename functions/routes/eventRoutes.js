@@ -8,21 +8,21 @@ router.post("/events", authMiddleware.auth, eventController.createEvent);
 router.get("/events", authMiddleware.auth, eventController.getAllEvents);
 router.get("/events/me", authMiddleware.auth, eventController.getUserEvents);
 router.put(
-  "/events/:eventId",
-  authMiddleware.auth,
-  eventController.updateEvent
+    "/events/:eventId",
+    authMiddleware.auth,
+    eventController.updateEvent,
 );
 router.delete(
-  "/events/:eventId",
-  authMiddleware.auth,
-  eventController.deleteEvent
+    "/events/:eventId",
+    authMiddleware.auth,
+    eventController.deleteEvent,
 );
 router.get("/events/:eventId", eventController.getEventDetails);
 
 router.post(
-  "/events/batch",
-  authMiddleware.auth,
-  eventController.getEventsByIds
+    "/events/batch",
+    authMiddleware.auth,
+    eventController.getEventsByIds,
 );
 
 module.exports = router;

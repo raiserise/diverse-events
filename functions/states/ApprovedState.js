@@ -20,13 +20,13 @@ class ApprovedState extends BaseState {
     });
 
     await this.sendUserNotification(
-      "rsvp_cancelled",
-      "Your RSVP for the event has been cancelled."
+        "rsvp_cancelled",
+        "Your RSVP for the event has been cancelled.",
     );
 
     await this.sendOrganizerNotification(
-      "rsvp_received",
-      `User ${this.rsvp.userId} has cancelled their RSVP for your event.`
+        "rsvp_received",
+        `User ${this.rsvp.userId} has cancelled their RSVP for your event.`,
     );
 
     const CancelledState = require("./CancelledState");

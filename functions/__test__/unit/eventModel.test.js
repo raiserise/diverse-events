@@ -1,4 +1,3 @@
-const admin = require("firebase-admin");
 const eventModel = require("../../models/eventModel");
 
 jest.mock("../../config/firebase", () => {
@@ -28,12 +27,12 @@ jest.mock("firebase-admin", () => {
       FieldValue: {
         serverTimestamp: jest.fn(() => "mock-timestamp"),
       },
-      GeoPoint: jest.fn((lat, lng) => ({ lat, lng })),
+      GeoPoint: jest.fn((lat, lng) => ({lat, lng})),
     },
   };
 });
 
-const { db } = require("../../config/firebase");
+const {db} = require("../../config/firebase");
 
 describe("Event Model", () => {
   afterEach(() => {
@@ -42,7 +41,7 @@ describe("Event Model", () => {
 
   describe("createEvent", () => {
     it("should create a new event with default values", async () => {
-      db.collection().add.mockResolvedValue({ id: "event123" });
+      db.collection().add.mockResolvedValue({id: "event123"});
 
       const result = await eventModel.createEvent({
         title: "Test Event",
@@ -61,14 +60,14 @@ describe("Event Model", () => {
   describe("getEventsByUser", () => {
     it("should return events created by a user", async () => {
       db.collection()
-        .where()
-        .get.mockResolvedValue({
-          docs: [{ id: "event1", data: () => ({ title: "Event 1" }) }],
-        });
+          .where()
+          .get.mockResolvedValue({
+            docs: [{id: "event1", data: () => ({title: "Event 1"})}],
+          });
 
       const result = await eventModel.getEventsByUser("user1");
 
-      expect(result[0]).toMatchObject({ id: "event1", title: "Event 1" });
+      expect(result[0]).toMatchObject({id: "event1", title: "Event 1"});
     });
   });
 
@@ -110,12 +109,12 @@ describe("Event Model", () => {
   describe("getEventById", () => {
     it("should return event by ID", async () => {
       db.collection()
-        .doc()
-        .get.mockResolvedValue({
-          exists: true,
-          id: "event1",
-          data: () => ({ title: "Mock Event" }),
-        });
+          .doc()
+          .get.mockResolvedValue({
+            exists: true,
+            id: "event1",
+            data: () => ({title: "Mock Event"}),
+          });
 
       const result = await eventModel.getEventById("event1");
 
@@ -123,10 +122,10 @@ describe("Event Model", () => {
     });
 
     it("should throw if event not found", async () => {
-      db.collection().doc().get.mockResolvedValue({ exists: false });
+      db.collection().doc().get.mockResolvedValue({exists: false});
 
       await expect(eventModel.getEventById("fake")).rejects.toThrow(
-        "Event not found"
+          "Event not found",
       );
     });
   });
@@ -134,12 +133,12 @@ describe("Event Model", () => {
   describe("searchEvents", () => {
     it("should return events based on filters", async () => {
       db.collection()
-        .where()
-        .get.mockResolvedValue({
-          docs: [{ id: "e1", data: () => ({ title: "Match" }) }],
-        });
+          .where()
+          .get.mockResolvedValue({
+            docs: [{id: "e1", data: () => ({title: "Match"})}],
+          });
 
-      const result = await eventModel.searchEvents({ title: "Match" });
+      const result = await eventModel.searchEvents({title: "Match"});
 
       expect(result).toHaveLength(1);
       expect(result[0].title).toBe("Match");
@@ -149,15 +148,15 @@ describe("Event Model", () => {
   describe("updateEvent", () => {
     it("should update an event", async () => {
       const mockRef = {
-        get: jest.fn().mockResolvedValue({ exists: true }),
+        get: jest.fn().mockResolvedValue({exists: true}),
         update: jest.fn(),
       };
 
       db.collection().doc.mockReturnValue(mockRef);
-      mockRef.get.mockResolvedValueOnce({ exists: true });
+      mockRef.get.mockResolvedValueOnce({exists: true});
       mockRef.get.mockResolvedValueOnce({
         id: "event123",
-        data: () => ({ title: "Updated" }),
+        data: () => ({title: "Updated"}),
       });
 
       const result = await eventModel.updateEvent("event123", {
@@ -170,13 +169,13 @@ describe("Event Model", () => {
 
     it("should throw if event not found", async () => {
       const mockRef = {
-        get: jest.fn().mockResolvedValue({ exists: false }),
+        get: jest.fn().mockResolvedValue({exists: false}),
       };
 
       db.collection().doc.mockReturnValue(mockRef);
 
       await expect(eventModel.updateEvent("missing", {})).rejects.toThrow(
-        "Event not found"
+          "Event not found",
       );
     });
   });
@@ -184,7 +183,7 @@ describe("Event Model", () => {
   describe("deleteEvent", () => {
     it("should delete an event", async () => {
       const mockRef = {
-        get: jest.fn().mockResolvedValue({ exists: true }),
+        get: jest.fn().mockResolvedValue({exists: true}),
         delete: jest.fn(),
       };
 
@@ -198,13 +197,13 @@ describe("Event Model", () => {
 
     it("should throw if event doesn't exist", async () => {
       const mockRef = {
-        get: jest.fn().mockResolvedValue({ exists: false }),
+        get: jest.fn().mockResolvedValue({exists: false}),
       };
 
       db.collection().doc.mockReturnValue(mockRef);
 
       await expect(eventModel.deleteEvent("bad")).rejects.toThrow(
-        "Event not found"
+          "Event not found",
       );
     });
   });
@@ -212,8 +211,8 @@ describe("Event Model", () => {
   describe("getEventsByIds", () => {
     it("should return events matching the given IDs", async () => {
       const mockDocs = [
-        { id: "e1", exists: true, data: () => ({ title: "Event 1" }) },
-        { id: "e2", exists: true, data: () => ({ title: "Event 2" }) },
+        {id: "e1", exists: true, data: () => ({title: "Event 1"})},
+        {id: "e2", exists: true, data: () => ({title: "Event 2"})},
       ];
 
       db.collection().doc.mockImplementation((id) => {

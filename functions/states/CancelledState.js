@@ -4,8 +4,8 @@ const BaseState = require("./BaseState");
 
 class CancelledState extends BaseState {
   async reapply() {
-    const { db } = this;
-    const { id: rsvpId, data } = this.rsvp;
+    const {db} = this;
+    const {id: rsvpId, data} = this.rsvp;
 
     const lastCancelledAt = data.lastCancelledAt?.toDate?.() || null;
     const cooldownMinutes = 10;
@@ -15,7 +15,7 @@ class CancelledState extends BaseState {
       const diffMinutes = (now - lastCancelledAt) / (1000 * 60);
       if (diffMinutes < cooldownMinutes) {
         throw new Error(
-          `You must wait ${Math.ceil(cooldownMinutes - diffMinutes)} minutes before RSVPing again.`
+            `You must wait ${Math.ceil(cooldownMinutes - diffMinutes)} minutes before RSVPing again.`,
         );
       }
     }
