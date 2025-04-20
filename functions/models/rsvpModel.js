@@ -225,6 +225,20 @@ class RSVP {
         return b.createdAt - a.createdAt;
       });
   }
+
+  static async deleteRSVPsByEventId(eventId) {
+    const rsvpsRef = db.collection("rsvps").where("eventId", "==", eventId);
+    const snapshot = await rsvpsRef.get();
+
+    if (snapshot.empty) return;
+
+    const batch = db.batch();
+    snapshot.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+  }
 }
 
 module.exports = RSVP;

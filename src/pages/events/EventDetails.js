@@ -22,6 +22,7 @@ import EventModal from "../../components/EventModal";
 import CustomModal from "../../components/CustomModal";
 import { InviteBase } from "../../invite/InviteBase";
 import { NotifyDecorator } from "../../invite/NotifyDecorator";
+import DeleteEventModal from "../../components/DeleteEventsModal";
 
 function EventDetails() {
   const { id } = useParams();
@@ -45,6 +46,8 @@ function EventDetails() {
   const [editImageFile, setEditImageFile] = useState(null);
   const [showAll, setShowAll] = useState(false); // Toggle for participants list
 
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+
   const parseFirestoreTimestamp = (timestamp) =>
     timestamp?._seconds ? timestamp._seconds * 1000 : 0;
 
@@ -54,56 +57,60 @@ function EventDetails() {
     return () => unsubscribe();
   }, [auth]);
 
-  // Fetch event on load
-  useEffect(() => {
-    const loadEvent = async () => {
+  const loadEvent = async () => {
+    try {
+      let data;
       try {
-        let data;
-        try {
-          data = await getDataById("/events", id, true);
-        } catch (err) {
-          if (err.message.includes("Not authorized")) {
-            data = await getDataById("/events", id, false);
-          } else throw err;
-        }
-        if (!data) {
-          setError("Event not found.");
-          return;
-        }
-        // Private guard
-        if (
-          data.privacy === "private" &&
-          !(
-            user &&
-            [...(data.organizers || []), ...(data.invitedUsers || [])].includes(
-              user.uid
-            )
-          )
-        ) {
-          setError("You are not authorized to view this private event.");
-          return;
-        }
-        setEvent({ id, ...data });
-        setInvitedUsers(data.invitedUsers || []);
-        if (data.organizers?.length) {
-          const orgs = await Promise.all(
-            data.organizers.map((uid) => getDataById("/users", uid, true))
-          );
-          setOrganizers(orgs);
-        }
-        if (data.participants?.length) {
-          const parts = await Promise.all(
-            data.participants.map((uid) => getDataById("/users", uid, true))
-          );
-          setParticipants(parts);
-        }
+        data = await getDataById("/events", id, true);
       } catch (err) {
-        console.error("Error loading event:", err);
-        setError("Error loading event details.");
-      } finally {
-        setLoading(false);
+        if (err.message.includes("Not authorized")) {
+          data = await getDataById("/events", id, false);
+        } else throw err;
       }
-    };
+      if (!data) {
+        setError("Event not found.");
+        return;
+      }
+
+      // Private event access check
+      if (
+        data.privacy === "private" &&
+        !(
+          user &&
+          [...(data.organizers || []), ...(data.invitedUsers || [])].includes(
+            user.uid
+          )
+        )
+      ) {
+        setError("You are not authorized to view this private event.");
+        return;
+      }
+
+      setEvent({ id, ...data });
+      setInvitedUsers(data.invitedUsers || []);
+
+      if (data.organizers?.length) {
+        const orgs = await Promise.all(
+          data.organizers.map((uid) => getDataById("/users", uid, true))
+        );
+        setOrganizers(orgs);
+      }
+
+      if (data.participants?.length) {
+        const parts = await Promise.all(
+          data.participants.map((uid) => getDataById("/users", uid, true))
+        );
+        setParticipants(parts);
+      }
+    } catch (err) {
+      console.error("Error loading event:", err);
+      setError("Error loading event details.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (user !== null) loadEvent();
   }, [user, id]);
 
@@ -219,12 +226,10 @@ function EventDetails() {
     if (!field) return "";
     // Firestore Timestamp?
     if (field._seconds != null) {
-      return new Date(field._seconds * 1000)
-        .toISOString()
-        .slice(0, 16);
+      return new Date(field._seconds * 1000).toISOString().slice(0, 16);
     }
-  // ISO‑string or JS Date
-  const d = new Date(field);
+    // ISO‑string or JS Date
+    const d = new Date(field);
     return isNaN(d) ? "" : d.toISOString().slice(0, 16);
   };
 
@@ -322,19 +327,24 @@ function EventDetails() {
       await patchData(`/events/${event.id}`, updated, true);
       toast.success("Event updated!");
       setIsEditModalOpen(false);
-      window.location.reload();
+      loadEvent();
     } catch (err) {
       console.error(err);
       toast.error("Failed to update.");
     }
   };
 
+  const handleOpenDeleteModal = (event) => {
+    setEvent(event);
+    setDeleteModalOpen(true);
+  };
+
   const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to delete this event?")) return;
     try {
       await deleteData("/events", event.id, true);
       toast.success("Event deleted successfully");
-      window.location.href = "/events"; // redirect to events list
+      setDeleteModalOpen(false);
+      setEvent(null);
     } catch (err) {
       console.error("Delete failed:", err);
       toast.error("Failed to delete event.");
@@ -384,47 +394,44 @@ function EventDetails() {
     event.maxParticipants && event.participants.length >= event.maxParticipants;
   const visibleParticipants = participants.slice(0, 10);
 
-/**
- * Shows the exact UTC date & time you saved,
- * accepting Firestore Timestamps, ISO‑strings, or JS Dates.
- */
-const formatSavedDate = (field) => {
-  if (!field) return "N/A";
+  /**
+   * Shows the exact UTC date & time you saved,
+   * accepting Firestore Timestamps, ISO‑strings, or JS Dates.
+   */
+  const formatSavedDate = (field) => {
+    if (!field) return "N/A";
 
-  // Firestore Timestamp → JS Date
-  let date;
-  if (field._seconds != null) {
-    date = new Date(field._seconds * 1000);
-  }
-  // ISO‑string
-  else if (typeof field === "string") {
-    date = new Date(field);
-  }
-  // JS Date
-  else if (field instanceof Date) {
-    date = field;
-  }
-  else {
-    return "N/A";
-  }
+    // Firestore Timestamp → JS Date
+    let date;
+    if (field._seconds != null) {
+      date = new Date(field._seconds * 1000);
+    }
+    // ISO‑string
+    else if (typeof field === "string") {
+      date = new Date(field);
+    }
+    // JS Date
+    else if (field instanceof Date) {
+      date = field;
+    } else {
+      return "N/A";
+    }
 
-  if (isNaN(date.getTime())) return "N/A";
+    if (isNaN(date.getTime())) return "N/A";
 
-  try {
-    // ASCII hyphen in locale, UTC to freeze the saved moment
-    return date.toLocaleString("en-SG", {
-      timeZone: "UTC",
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  } catch {
-    // fallback “YYYY‑MM‑DD HH:MM”
-    const iso = date.toISOString();
-    return iso.slice(0, 10) + " " + iso.slice(11, 16);
-  }
-};
-
-
+    try {
+      // ASCII hyphen in locale, UTC to freeze the saved moment
+      return date.toLocaleString("en-SG", {
+        timeZone: "UTC",
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    } catch {
+      // fallback “YYYY‑MM‑DD HH:MM”
+      const iso = date.toISOString();
+      return iso.slice(0, 10) + " " + iso.slice(11, 16);
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white shadow-lg rounded-lg relative">
@@ -662,7 +669,7 @@ const formatSavedDate = (field) => {
       <div className="fixed bottom-6 right-6 flex gap-4">
         {organizers.some((org) => org.id === user?.uid) && (
           <button
-            onClick={handleDelete}
+            onClick={() => handleOpenDeleteModal(event)}
             className="bg-red-600 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-red-700 transition"
           >
             Delete Event
@@ -724,28 +731,36 @@ const formatSavedDate = (field) => {
                     </span>
                   ) : (
                     <button
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                    onClick={async () => {
-                      const base = new InviteBase(event.id, event.title); 
-                      const decorated = new NotifyDecorator(base);
-                    
-                      try {
-                        await decorated.invite(u, event);
-                        setInvitedUsers((prev) => [...prev, u.id]);
-                      } catch (err) {
-                        console.error("Error inviting user:", err);
-                        toast.error("Failed to invite user.");
-                      }
-                    }}
-                  >
-                    Invite
-                  </button>
+                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                      onClick={async () => {
+                        const base = new InviteBase(event.id, event.title);
+                        const decorated = new NotifyDecorator(base);
+
+                        try {
+                          await decorated.invite(u, event);
+                          setInvitedUsers((prev) => [...prev, u.id]);
+                        } catch (err) {
+                          console.error("Error inviting user:", err);
+                          toast.error("Failed to invite user.");
+                        }
+                      }}
+                    >
+                      Invite
+                    </button>
                   )}
                 </li>
               ))}
           </ul>
         </div>
       </CustomModal>
+
+      <DeleteEventModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onDelete={handleDelete}
+        eventTitle={event?.title}
+      />
+
       {/* Edit Modal */}
       {isEditModalOpen && (
         <EventModal

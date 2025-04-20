@@ -57,17 +57,18 @@ const deleteEvent = async (req, res) => {
     const eventId = req.params.eventId;
     const event = await eventModel.getEventById(eventId);
 
-    // Check if the user is the creator or an organizer of the event
     if (event.creatorId !== req.user.user_id) {
       return res.status(403).json({ error: "Only creator can delete" });
     }
 
-    // Call the deleteEvent function from the eventModel
+    // Delete related RSVPs first
+    await rsvpModel.deleteRSVPsByEventId(eventId);
+
+    // Then delete the event
     await eventModel.deleteEvent(eventId);
 
-    // Return a success message after deleting
     res.status(200).json({
-      message: "Event deleted successfully",
+      message: "Event and related RSVPs deleted successfully",
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -79,33 +80,6 @@ const getEventDetails = async (req, res) => {
     const eventId = req.params.eventId;
     const event = await eventModel.getEventById(eventId);
     res.status(200).json(event);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const getEventStats = async (req, res) => {
-  try {
-    const eventId = req.params.eventId;
-
-    // Verify the user is authorized to view stats
-    const event = await eventModel.getEventById(eventId);
-    if (!event.organizers.includes(req.user.user_id)) {
-      return res.status(403).json({ error: "Not authorized" });
-    }
-
-    // Fetch RSVPs using their respective models
-    // Fetch RSVPs using their respective models
-    const rsvps = await rsvpModel.getRSVPsByEvent(eventId);
-
-    // Calculate stats
-    const stats = {
-      totalRSVPs: rsvps.length,
-      attendees: rsvpModel.countRSVPsByStatus(rsvps, "approved"),
-      declined: rsvpModel.countRSVPsByStatus(rsvps, "declined"),
-    };
-
-    res.status(200).json(stats);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -133,7 +107,6 @@ module.exports = {
   updateEvent,
   deleteEvent,
   getEventDetails,
-  getEventStats,
   getAllEvents,
   getEventsByIds,
 };

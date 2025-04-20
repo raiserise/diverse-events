@@ -159,9 +159,6 @@ const RSVP = () => {
   return (
     <div className="container mx-auto p-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-4">
-          RSVP Management
-        </h1>
         <div className="flex space-x-4 border-b border-gray-200">
           <button
             className={`pb-3 font-medium ${
