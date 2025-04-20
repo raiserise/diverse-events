@@ -55,7 +55,7 @@ function MyEvents() {
       const formattedEnd = end ? end.toLocaleString("en-US", opts) : "";
 
       // build with category
-      return new EventBuilder()
+      let builder = new EventBuilder()
         .setId(evt.id)
         .setTitle(evt.title)
         .setDescription(evt.description)
@@ -64,8 +64,14 @@ function MyEvents() {
         .setStartDate(formattedStart)
         .setEndDate(formattedEnd)
         .setFeaturedImage(evt.featuredImage)
-        .setLocation(evt.location)
-        .build();
+        .setLocation(evt.location);
+
+      // conditional zoom link
+      if (evt.format === "Online" && evt.zoomLink) {
+        builder = builder.setZoomLink(evt.zoomLink);
+      }
+
+      return builder.build();
     });
 
     setBuiltEvents(list);
