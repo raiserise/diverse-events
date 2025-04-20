@@ -214,6 +214,19 @@ function EventDetails() {
       .catch((err) => console.error("Error fetching users:", err));
   }, [isInviteOpen]);
 
+  // Date Helper
+  const toInputDateTime = (field) => {
+    if (!field) return "";
+    // Firestore Timestamp?
+    if (field._seconds != null) {
+      return new Date(field._seconds * 1000)
+        .toISOString()
+        .slice(0, 16);
+    }
+  // ISO‑string or JS Date
+  const d = new Date(field);
+    return isNaN(d) ? "" : d.toISOString().slice(0, 16);
+  };
 
   const handleEditClick = () => {
     const {
@@ -238,12 +251,8 @@ function EventDetails() {
       description,
       category: category.join(", "),
       location,
-      startDate: startDate?._seconds
-        ? new Date(startDate._seconds * 1000).toISOString().slice(0, 16)
-        : "",
-      endDate: endDate?._seconds
-        ? new Date(endDate._seconds * 1000).toISOString().slice(0, 16)
-        : "",
+      startDate: toInputDateTime(startDate),
+      endDate: toInputDateTime(endDate),
       language,
       acceptsRSVP,
       featuredImage,
@@ -376,7 +385,7 @@ function EventDetails() {
   const visibleParticipants = participants.slice(0, 10);
 
 /**
- * Accepts either:
+ * Date Helper, Accepts either:
  *   • Firestore Timestamp object { _seconds, _nanoseconds }
  *   • ISO‑string or JS Date
  * Returns a nicely formatted date or “N/A”.
@@ -384,7 +393,7 @@ function EventDetails() {
 const formatEventDate = (field) => {
   if (!field) return "N/A";
 
-  // 1) Firestore Timestamp
+  // Firestore Timestamp
   if (field._seconds != null) {
     return new Date(field._seconds * 1000).toLocaleString("en-US", {
       timeZone: "Asia/Shanghai",
@@ -393,7 +402,7 @@ const formatEventDate = (field) => {
     });
   }
 
-  // 2) ISO‑string (or native Date)
+  // ISO‑string (or native Date)
   const d = new Date(field);
   if (isNaN(d.getTime())) return "N/A";
 
