@@ -5,7 +5,7 @@ import {
   getDataById,
   getAllData,
   addData,
-  patchData,
+  putData,
   deleteData,
 } from "../../api/apiService";
 import FirebaseImage from "../../components/FirebaseImage";
@@ -325,7 +325,7 @@ function EventDetails() {
       updatedAt: new Date(),
     };
     try {
-      await patchData(`/events/${event.id}`, updated, true);
+      await putData(`/events/${event.id}`, updated, true);
       toast.success("Event updated!");
       setIsEditModalOpen(false);
       loadEvent();

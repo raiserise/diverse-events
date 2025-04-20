@@ -86,10 +86,24 @@ export const deleteData = async (endPoint, id, requiresAuth = true) => {
   }
 };
 
-export const patchData = async (endPoint, userData, requiresAuth = true) => {
+export const putData = async (endPoint, userData, requiresAuth = true) => {
   try {
     const headers = await authHeaders(requiresAuth);
     const response = await axios.put(
+      `${API_URL}${endPoint}`,
+      userData,
+      headers
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response ? error.response.data : error.message);
+  }
+};
+
+export const patchData = async (endPoint, userData, requiresAuth = true) => {
+  try {
+    const headers = await authHeaders(requiresAuth);
+    const response = await axios.patch(
       `${API_URL}${endPoint}`,
       userData,
       headers
