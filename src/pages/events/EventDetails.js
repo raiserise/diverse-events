@@ -20,6 +20,8 @@ import {
 } from "firebase/storage";
 import EventModal from "../../components/EventModal";
 import CustomModal from "../../components/CustomModal";
+import { InviteBase } from "../../invite/InviteBase";
+import { NotifyDecorator } from "../../invite/NotifyDecorator";
 
 function EventDetails() {
   const { id } = useParams();
@@ -212,31 +214,6 @@ function EventDetails() {
       .catch((err) => console.error("Error fetching users:", err));
   }, [isInviteOpen]);
 
-  const inviteUser = async (u) => {
-    try {
-      await patchData(
-        `/events/${event.id}`,
-        { invitedUsers: [...invitedUsers, u.id] },
-        true
-      );
-      await addData(
-        "/notifications",
-        {
-          relatedEventId: event.id,
-          userId: u.id,
-          message: `You have been invited to the event: ${event.title}`,
-          createdAt: new Date(),
-          type: "event_invite",
-          read: false,
-        },
-        true
-      );
-      setInvitedUsers((prev) => [...prev, u.id]);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to invite user.");
-    }
-  };
 
   const handleEditClick = () => {
     const {
@@ -697,7 +674,7 @@ function EventDetails() {
               .filter(
                 (u) =>
                   !event.organizers.includes(u.id) &&
-                  u.name.includes(searchTerm)
+                  u.name?.includes(searchTerm)
               )
               .map((u) => (
                 <li
@@ -714,11 +691,22 @@ function EventDetails() {
                     </span>
                   ) : (
                     <button
-                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                      onClick={() => inviteUser(u)}
-                    >
-                      Invite
-                    </button>
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                    onClick={async () => {
+                      const base = new InviteBase(event.id, event.title); 
+                      const decorated = new NotifyDecorator(base);
+                    
+                      try {
+                        await decorated.invite(u, event);
+                        setInvitedUsers((prev) => [...prev, u.id]);
+                      } catch (err) {
+                        console.error("Error inviting user:", err);
+                        toast.error("Failed to invite user.");
+                      }
+                    }}
+                  >
+                    Invite
+                  </button>
                   )}
                 </li>
               ))}
