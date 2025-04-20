@@ -1,12 +1,23 @@
 // src/pages/events/EventDetails.js
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getDataById, getAllData, addData, patchData, deleteData } from "../../api/apiService";
+import {
+  getDataById,
+  getAllData,
+  addData,
+  patchData,
+  deleteData,
+} from "../../api/apiService";
 import FirebaseImage from "../../components/FirebaseImage";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import {
+  getStorage,
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+} from "firebase/storage";
 import EventModal from "../../components/EventModal";
 import CustomModal from "../../components/CustomModal";
 
@@ -30,7 +41,7 @@ function EventDetails() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState({});
   const [editImageFile, setEditImageFile] = useState(null);
-  const [showAll, setShowAll] = useState(false);  // Toggle for participants list
+  const [showAll, setShowAll] = useState(false); // Toggle for participants list
 
   const parseFirestoreTimestamp = (timestamp) =>
     timestamp?._seconds ? timestamp._seconds * 1000 : 0;
@@ -60,7 +71,12 @@ function EventDetails() {
         // Private guard
         if (
           data.privacy === "private" &&
-          !(user && [...(data.organizers||[]), ...(data.invitedUsers||[])].includes(user.uid))
+          !(
+            user &&
+            [...(data.organizers || []), ...(data.invitedUsers || [])].includes(
+              user.uid
+            )
+          )
         ) {
           setError("You are not authorized to view this private event.");
           return;
@@ -95,15 +111,21 @@ function EventDetails() {
     const check = async () => {
       try {
         const resp = await getDataById("/rsvp/check", id, true);
-        const full = event.maxParticipants && event.participants.length >= event.maxParticipants;
-        if (full) { setIsRSVP(false); setCanRSVP(false); return; }
+        const full =
+          event.maxParticipants &&
+          event.participants.length >= event.maxParticipants;
+        if (full) {
+          setIsRSVP(false);
+          setCanRSVP(false);
+          return;
+        }
         if (resp.exists) {
           if (resp.status === "cancelled") {
             const last = parseFirestoreTimestamp(resp.lastCancelledAt);
             const elapsed = Date.now() - last;
-            const limit = 30*60*1000;
+            const limit = 30 * 60 * 1000;
             if (elapsed < limit) {
-              setCooldownRemaining(Math.ceil((limit-elapsed)/1000));
+              setCooldownRemaining(Math.ceil((limit - elapsed) / 1000));
               setCanRSVP(false);
               return;
             }
@@ -129,112 +151,196 @@ function EventDetails() {
   useEffect(() => {
     if (cooldownRemaining <= 0) return;
     const timer = setInterval(() => {
-      setCooldownRemaining(c => {
-        if (c<=1) { clearInterval(timer); setCanRSVP(true); return 0; }
-        return c-1;
+      setCooldownRemaining((c) => {
+        if (c <= 1) {
+          clearInterval(timer);
+          setCanRSVP(true);
+          return 0;
+        }
+        return c - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
   }, [cooldownRemaining]);
 
   const handleRSVP = async () => {
-    if (!event||isRSVP||submitting) return;
+    if (!event || isRSVP || submitting) return;
     setSubmitting(true);
     try {
-      if (event.maxParticipants && event.participants.length>=event.maxParticipants) {
+      if (
+        event.maxParticipants &&
+        event.participants.length >= event.maxParticipants
+      ) {
         toast.error("Event is full. RSVP is not allowed.");
         return;
       }
       const resp = await getDataById("/rsvp/check", id, true);
-      if (resp.exists && resp.status==="cancelled") {
+      if (resp.exists && resp.status === "cancelled") {
         const last = parseFirestoreTimestamp(resp.lastCancelledAt);
-        const elapsed = Date.now()-last;
-        if (elapsed<30*60*1000) {
-          const mins = Math.ceil((30*60*1000-elapsed)/60000);
+        const elapsed = Date.now() - last;
+        if (elapsed < 30 * 60 * 1000) {
+          const mins = Math.ceil((30 * 60 * 1000 - elapsed) / 60000);
           toast.error(`You can RSVP again in ${mins} minutes.`);
           return;
         }
       }
-      await addData("/rsvp", { eventId:event.id, organizers:event.organizers, createdAt:new Date() }, true);
+      await addData(
+        "/rsvp",
+        {
+          eventId: event.id,
+          organizers: event.organizers,
+          createdAt: new Date(),
+        },
+        true
+      );
       setIsRSVP(true);
       setCanRSVP(false);
       toast.success("RSVP successful!");
-    } catch(err) {
+    } catch (err) {
       console.error("RSVP error:", err);
       toast.error("RSVP failed. Please try again.");
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Load users for invite
   useEffect(() => {
     if (!isInviteOpen) return;
     getAllData("/users", false)
-      .then(data=>setUsers(data||[]))
-      .catch(err=>console.error("Error fetching users:",err));
+      .then((data) => setUsers(data || []))
+      .catch((err) => console.error("Error fetching users:", err));
   }, [isInviteOpen]);
 
   const inviteUser = async (u) => {
     try {
-      await patchData(`/events/${event.id}`, { invitedUsers:[...invitedUsers,u.id] }, true);
-      await addData("/notifications", { relatedEventId:event.id, userId:u.id, message:`You have been invited to the event: ${event.title}`, createdAt:new Date(), type:"event_invite", read:false }, true);
-      setInvitedUsers(prev=>[...prev,u.id]);
-    } catch(err) { console.error(err); toast.error("Failed to invite user."); }
+      await patchData(
+        `/events/${event.id}`,
+        { invitedUsers: [...invitedUsers, u.id] },
+        true
+      );
+      await addData(
+        "/notifications",
+        {
+          relatedEventId: event.id,
+          userId: u.id,
+          message: `You have been invited to the event: ${event.title}`,
+          createdAt: new Date(),
+          type: "event_invite",
+          read: false,
+        },
+        true
+      );
+      setInvitedUsers((prev) => [...prev, u.id]);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to invite user.");
+    }
   };
 
   const handleEditClick = () => {
-    const { title
-      ,description
-      ,category=[]
-      ,location
-      ,startDate
-      ,endDate
-      ,language
-      ,acceptsRSVP
-      ,featuredImage
-      ,maxParticipants
-      ,privacy
-      ,format
-      ,terms
-      ,status
-      ,inviteLink } = event;
-    setEditFormData({
-      title, description,
-      category:category.join(", "),
+    const {
+      title,
+      description,
+      category = [],
       location,
-      startDate: startDate?._seconds?new Date(startDate._seconds*1000).toISOString().slice(0,16):"",
-      endDate: endDate?._seconds?new Date(endDate._seconds*1000).toISOString().slice(0,16):"",
-      language, acceptsRSVP, featuredImage, maxParticipants, privacy, format, terms, status, inviteLink
+      startDate,
+      endDate,
+      language,
+      acceptsRSVP,
+      featuredImage,
+      maxParticipants,
+      privacy,
+      format,
+      terms,
+      status,
+      inviteLink,
+    } = event;
+    setEditFormData({
+      title,
+      description,
+      category: category.join(", "),
+      location,
+      startDate: startDate?._seconds
+        ? new Date(startDate._seconds * 1000).toISOString().slice(0, 16)
+        : "",
+      endDate: endDate?._seconds
+        ? new Date(endDate._seconds * 1000).toISOString().slice(0, 16)
+        : "",
+      language,
+      acceptsRSVP,
+      featuredImage,
+      maxParticipants,
+      privacy,
+      format,
+      terms,
+      status,
+      inviteLink,
     });
     setEditImageFile(null);
     setIsEditModalOpen(true);
   };
 
   const handleEditChange = (e) => {
-    const { name,value,type,checked } = e.target;
-    setEditFormData(prev=>({ ...prev, [name]:type==="checkbox"?checked:value }));
+    const { name, value, type, checked } = e.target;
+    setEditFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
-  const handleEditFileChange = (e) => { if(e.target.files[0]) setEditImageFile(e.target.files[0]); };
+  const handleEditFileChange = (e) => {
+    if (e.target.files[0]) setEditImageFile(e.target.files[0]);
+  };
 
-  const uploadImage = (file) => new Promise((res,rej)=>{
-    const storage=getStorage();
-    const storageRef=ref(storage,`events/${file.name}`);
-    const task=uploadBytesResumable(storageRef,file);
-    task.on("state_changed",null,rej,async ()=>{ try{ const url=await getDownloadURL(task.snapshot.ref); res(url);}catch(e){rej(e);} });
-  });
+  const uploadImage = (file) =>
+    new Promise((res, rej) => {
+      const storage = getStorage();
+      const storageRef = ref(storage, `events/${file.name}`);
+      const task = uploadBytesResumable(storageRef, file);
+      task.on("state_changed", null, rej, async () => {
+        try {
+          const url = await getDownloadURL(task.snapshot.ref);
+          res(url);
+        } catch (e) {
+          rej(e);
+        }
+      });
+    });
 
   const handleEditSubmit = async (e) => {
-    e.preventDefault(); if(!user){toast.error("Login required to edit.");return;}
-    let imageUrl=editFormData.featuredImage;
-    if(editImageFile){try{imageUrl=await uploadImage(editImageFile);}catch{toast.warn("Image upload failed, using existing.");}}
-    const updated={ ...editFormData,
-      category:editFormData.category.split(",").map(s=>s.trim()),
-      startDate:editFormData.startDate?new Date(editFormData.startDate):null,
-      endDate:editFormData.endDate?new Date(editFormData.endDate):null,
-      featuredImage:imageUrl, updatedAt:new Date()
+    e.preventDefault();
+    if (!user) {
+      toast.error("Login required to edit.");
+      return;
+    }
+    let imageUrl = editFormData.featuredImage;
+    if (editImageFile) {
+      try {
+        imageUrl = await uploadImage(editImageFile);
+      } catch {
+        toast.warn("Image upload failed, using existing.");
+      }
+    }
+    const updated = {
+      ...editFormData,
+      category: editFormData.category.split(",").map((s) => s.trim()),
+      startDate: editFormData.startDate
+        ? new Date(editFormData.startDate)
+        : null,
+      endDate: editFormData.endDate ? new Date(editFormData.endDate) : null,
+      featuredImage: imageUrl,
+      updatedAt: new Date(),
     };
-    try{ await patchData(`/events/${event.id}`,updated,true); toast.success("Event updated!"); setIsEditModalOpen(false); window.location.reload(); }
-    catch(err){console.error(err);toast.error("Failed to update.");}
+    try {
+      await patchData(`/events/${event.id}`, updated, true);
+      toast.success("Event updated!");
+      setIsEditModalOpen(false);
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update.");
+    }
   };
 
   const handleDelete = async () => {
@@ -247,7 +353,7 @@ function EventDetails() {
       console.error("Delete failed:", err);
       toast.error("Failed to delete event.");
     }
-  }; 
+  };
 
   // Render states
   if (loading)
@@ -284,68 +390,158 @@ function EventDetails() {
       </div>
     );
 
-  const inviteURL = event.inviteLink && !event.inviteLink.startsWith("http")?`http://${event.inviteLink}`:event.inviteLink;
-  const isEventFull = event.maxParticipants && event.participants.length>=event.maxParticipants;
-  const visibleParticipants = participants.slice(0,10);
+  const inviteURL =
+    event.inviteLink && !event.inviteLink.startsWith("http")
+      ? `http://${event.inviteLink}`
+      : event.inviteLink;
+  const isEventFull =
+    event.maxParticipants && event.participants.length >= event.maxParticipants;
+  const visibleParticipants = participants.slice(0, 10);
 
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white shadow-lg rounded-lg relative">
-      {event.featuredImage?(
-        <FirebaseImage path={event.featuredImage} alt={event.title} className="w-full h-64 object-cover rounded-lg mb-4"/>
-      ):(<p className="text-gray-500">No image available</p>)}
+      {event.featuredImage ? (
+        <FirebaseImage
+          path={event.featuredImage}
+          alt={event.title}
+          className="w-full h-64 object-cover rounded-lg mb-4"
+        />
+      ) : (
+        <p className="text-gray-500">No image available</p>
+      )}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">{event.title}</h1>
         <div className="flex items-center space-x-4">
-          <span className={`px-4 py-2 rounded-lg text-white ${event.status==="active"?"bg-green-500":"bg-red-500"}`}>{event.status.toUpperCase()}</span>
-          {event.acceptsRSVP&&<span className="px-4 py-2 bg-blue-500 text-white rounded-lg">RSVP Available</span>}
+          <span
+            className={`px-4 py-2 rounded-lg text-white ${event.status === "active" ? "bg-green-500" : "bg-red-500"}`}
+          >
+            {event.status.toUpperCase()}
+          </span>
+          {event.acceptsRSVP && (
+            <span className="px-4 py-2 bg-blue-500 text-white rounded-lg">
+              RSVP Available
+            </span>
+          )}
         </div>
       </div>
+      {/* Event Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">Overview</h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            Event Overview
+          </h3>
           <div className="space-y-4">
-            <p><strong>Description:</strong> {event.description}</p>
-            <p><strong>Privacy:</strong> {event.privacy[0].toUpperCase()+event.privacy.slice(1)}</p>
-            {event.terms&&<p><strong>Terms:</strong> {event.terms}</p>}
+            <p>
+              <strong className="text-gray-900">Description:</strong>{" "}
+              {event.description}
+            </p>
+            <p>
+              <strong className="text-gray-900">Privacy:</strong>{" "}
+              {event.privacy.charAt(0).toUpperCase() + event.privacy.slice(1)}
+            </p>
+            {event.terms && (
+              <p>
+                <strong className="text-gray-900">Terms:</strong> {event.terms}
+              </p>
+            )}
           </div>
         </div>
+
         <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">Details</h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            Event Details
+          </h3>
           <div className="space-y-4">
-            <p><strong>Category:</strong> {Array.isArray(event.category)?event.category.map((c,i)=>(<span key={i} className="bg-blue-200 text-blue-800 px-2 py-1 rounded mr-2 mb-2 inline-block">{c}</span>)):"No categories"}</p>
-            <p><strong>Event Type:</strong> {event.format}</p>
-            <p><strong>Language:</strong> {event.language}</p>
-            <p><strong>Max Participants:</strong> {event.maxParticipants}</p>
+            <p>
+              <strong className="text-gray-900">Category:</strong>{" "}
+              {Array.isArray(event.category)
+                ? event.category.map((cat, index) => (
+                    <span
+                      key={index}
+                      className="bg-blue-200 text-blue-800 px-2 py-1 rounded mr-2 mb-2 inline-block"
+                    >
+                      {cat}
+                    </span>
+                  ))
+                : "No categories"}
+            </p>
+            <p>
+              <strong className="text-gray-900">Event Type:</strong>{" "}
+              {event.format}
+            </p>
+            <p>
+              <strong className="text-gray-900">Language:</strong>{" "}
+              {event.language}
+            </p>
+            <p>
+              <strong className="text-gray-900">Max Participants:</strong>{" "}
+              {event.maxParticipants}
+            </p>
           </div>
         </div>
       </div>
-      {event.format==="Online"&&(
+      {event.format === "Online" && (
         <div className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">Invite Link</h3>
-          <p className="text-sm text-blue-600">{event.inviteLink?(<a href={inviteURL} target="_blank" rel="noopener noreferrer">{event.inviteLink}</a>):"No invite link provided."}</p>
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            Invite Link
+          </h3>
+          <p className="text-sm text-blue-600">
+            {event.inviteLink ? (
+              <a href={inviteURL} target="_blank" rel="noopener noreferrer">
+                {event.inviteLink}
+              </a>
+            ) : (
+              "No invite link provided."
+            )}
+          </p>
         </div>
       )}
+      {/* Date & Participation Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <div>
           <h3 className="text-xl font-semibold text-gray-800 mb-4">Schedule</h3>
           <div className="space-y-4">
-            <p><strong>Start Date:</strong> {event.startDate?._seconds?new Date(event.startDate._seconds*1000).toLocaleString("en-US",{timeZone:"Asia/Singapore",dateStyle:"medium",timeStyle:"medium"}):"N/A"}</p>
-            <p><strong>End Date:</strong> {event.endDate?._seconds?new Date(event.endDate._seconds*1000).toLocaleString("en-US",{timeZone:"Asia/Singapore",dateStyle:"medium",timeStyle:"medium"}):"N/A"}</p>
+            <p>
+              <strong className="text-gray-900">Start Date:</strong>{" "}
+              {event.startDate?._seconds
+                ? new Date(event.startDate._seconds * 1000).toLocaleString(
+                    "en-US",
+                    {
+                      timeZone: "Asia/Shanghai",
+                      dateStyle: "medium",
+                      timeStyle: "medium",
+                    }
+                  )
+                : "N/A"}
+            </p>
+            <p>
+              <strong className="text-gray-900">End Date:</strong>{" "}
+              {event.endDate?._seconds
+                ? new Date(event.endDate._seconds * 1000).toLocaleString(
+                    "en-US",
+                    {
+                      timeZone: "Asia/Shanghai",
+                      dateStyle: "medium",
+                      timeStyle: "medium",
+                    }
+                  )
+                : "N/A"}
+            </p>
           </div>
         </div>
+
         <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">Participation</h3></div>
-        </div>
-    ...       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-        <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">Participation</h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            Participation
+          </h3>
           <div className="space-y-4">
-            <p><strong>RSVP Status:</strong> {event.acceptsRSVP ? "Open" : "Closed"}</p>
-            <p><strong>Participant Count:</strong> {participants.length}</p>
+            <p>
+              <strong className="text-gray-900">Participant Count:</strong>{" "}
+              {event.participants?.length || 0}
+            </p>
           </div>
         </div>
       </div>
-
       {/* Organizers */}
       <div className="mb-8">
         <h3 className="text-xl font-semibold text-gray-800 mb-4">Organizers</h3>
@@ -354,7 +550,11 @@ function EventDetails() {
             <div key={org.id} className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden">
                 {org.avatar ? (
-                  <FirebaseImage path={org.avatar} alt={org.name} className="w-full h-full object-cover" />
+                  <FirebaseImage
+                    path={org.avatar}
+                    alt={org.name}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full bg-gray-300 flex items-center justify-center">
                     <span className="text-gray-600">{org.name?.[0]}</span>
@@ -363,42 +563,56 @@ function EventDetails() {
               </div>
               <div>
                 <p className="font-medium">{org.name || "Unknown Organizer"}</p>
-                {org.contact && <p className="text-sm text-gray-600">{org.contact}</p>}
+                {org.contact && (
+                  <p className="text-sm text-gray-600">{org.contact}</p>
+                )}
               </div>
             </div>
           ))}
         </div>
       </div>
-
       {/* Participants List */}
       {participants.length > 0 ? (
         <>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">List of Participants</h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            List of Participants
+          </h3>
           <ul className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {visibleParticipants.map((participant) => (
-              <li key={participant.id} className="bg-gray-100 p-4 rounded-lg text-center hover:bg-gray-200 transition">
-                <p className="font-medium text-gray-700">{participant.name || "Name not available"}</p>
+              <li
+                key={participant.id}
+                className="bg-gray-100 p-4 rounded-lg text-center hover:bg-gray-200 transition"
+              >
+                <p className="font-medium text-gray-700">
+                  {participant.name || "Name not available"}
+                </p>
                 <p className="text-sm text-gray-600">Confirmed</p>
               </li>
             ))}
           </ul>
           {participants.length > 10 && (
-            <button onClick={() => setShowAll((prev) => !prev)} className="mt-4 text-blue-500 hover:underline text-sm">
+            <button
+              onClick={() => setShowAll((prev) => !prev)}
+              className="mt-4 text-blue-500 hover:underline text-sm"
+            >
               {showAll ? "Show Less" : `Show All (${participants.length})`}
             </button>
           )}
         </>
       ) : (
         <div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">No Participants Yet</h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            No Participants Yet
+          </h3>
         </div>
       )}
-
       {/* RSVP Button */}
       {event.acceptsRSVP && (
         <div className="fixed md:relative bottom-0 left-0 right-0 md:mb-8 bg-white md:bg-transparent p-4 md:p-0 md:mt-8">
           {organizers.some((org) => org.id === user?.uid) ? (
-            <p className="text-yellow-600 text-center py-3">Organizers cannot RSVP to their own events</p>
+            <p className="text-yellow-600 text-center py-3">
+              Organizers cannot RSVP to their own events
+            </p>
           ) : (
             <>
               <button
@@ -408,83 +622,123 @@ function EventDetails() {
                   isRSVP
                     ? "bg-green-500 cursor-default"
                     : isEventFull
-                    ? "bg-red-400 cursor-not-allowed"
-                    : canRSVP
-                    ? "bg-blue-400 hover:bg-blue-500"
-                    : "bg-gray-400 cursor-not-allowed"
+                      ? "bg-red-400 cursor-not-allowed"
+                      : canRSVP
+                        ? "bg-blue-400 hover:bg-blue-500"
+                        : "bg-gray-400 cursor-not-allowed"
                 }`}
               >
                 {submitting
                   ? "Submitting..."
                   : isRSVP
-                  ? "RSVP Confirmed"
-                  : isEventFull
-                  ? "Event is full"
-                  : canRSVP
-                  ? "RSVP Now"
-                  : `You can RSVP again in ${Math.floor(cooldownRemaining / 60)}m ${cooldownRemaining % 60}s`}
+                    ? "RSVP Confirmed"
+                    : isEventFull
+                      ? "Event is full"
+                      : canRSVP
+                        ? "RSVP Now"
+                        : `You can RSVP again in ${Math.floor(cooldownRemaining / 60)}m ${cooldownRemaining % 60}s`}
               </button>
               {!canRSVP && cooldownRemaining > 0 && isRSVP && (
                 <p className="text-red-500 text-center text-sm mt-2">
-                  You can RSVP again in {Math.floor(cooldownRemaining / 60)}m {cooldownRemaining % 60}s
+                  You can RSVP again in {Math.floor(cooldownRemaining / 60)}m{" "}
+                  {cooldownRemaining % 60}s
                 </p>
               )}
             </>
           )}
         </div>
       )}
-
       {/* Invite/Edit/Delete Buttons */}
       <div className="fixed bottom-6 right-6 flex gap-4">
         {organizers.some((org) => org.id === user?.uid) && (
-          <button onClick={handleDelete} className="bg-red-600 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-red-700 transition">
+          <button
+            onClick={handleDelete}
+            className="bg-red-600 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-red-700 transition"
+          >
             Delete Event
           </button>
         )}
         {organizers.some((org) => org.id === user?.uid) && (
-          <button onClick={() => setIsInviteOpen(true)} className="bg-purple-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-purple-600 transition">
+          <button
+            onClick={() => setIsInviteOpen(true)}
+            className="bg-purple-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-purple-600 transition"
+          >
             Invite Users
           </button>
         )}
         {organizers.some((org) => org.id === user?.uid) && (
-          <button onClick={handleEditClick} className="bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-orange-600 transition">
+          <button
+            onClick={handleEditClick}
+            className="bg-orange-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-orange-600 transition"
+          >
             Edit Event
           </button>
         )}
       </div>
-
       {/* Invite Modal */}
-      <CustomModal isOpen={isInviteOpen} onRequestClose={() => setIsInviteOpen(false)} contentLabel="Invite Users" className="fixed inset-0 flex items-center justify-center z-50" overlayClassName="fixed inset-0 bg-black bg-opacity-50">
+      <CustomModal
+        isOpen={isInviteOpen}
+        onRequestClose={() => setIsInviteOpen(false)}
+        contentLabel="Invite Users"
+        className="fixed inset-0 flex items-center justify-center z-50"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-50"
+      >
         <div className="bg-white rounded-lg shadow-lg w-full max-w-6xl h-[80vh] flex flex-col p-6">
           <h2 className="text-2xl font-bold mb-4">Invite Users</h2>
-          <input type="text" placeholder="Search users..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="mb-4 p-3 border rounded w-full" />
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="mb-4 p-3 border rounded w-full"
+          />
           <ul className="flex-1 overflow-y-auto w-full space-y-2">
-            {users.filter((u) => !event.organizers.includes(u.id) && u.name.includes(searchTerm)).map((u) => (
-              <li key={u.id} className="flex items-center justify-between p-2 border-b gap-x-40">
-                <div className="flex-1 mr-4">
-                  <p className="font-semibold">{u.name}</p>
-                  <p className="text-sm text-gray-600">{u.email}</p>
-                </div>
-                {invitedUsers.includes(u.id) ? (
-                  <span className="text-green-500 font-semibold">Invited</span>
-                ) : (
-                  <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" onClick={() => inviteUser(u)}>
-                    Invite
-                  </button>
-                )}
-              </li>
-            ))}
+            {users
+              .filter(
+                (u) =>
+                  !event.organizers.includes(u.id) &&
+                  u.name.includes(searchTerm)
+              )
+              .map((u) => (
+                <li
+                  key={u.id}
+                  className="flex items-center justify-between p-2 border-b gap-x-40"
+                >
+                  <div className="flex-1 mr-4">
+                    <p className="font-semibold">{u.name}</p>
+                    <p className="text-sm text-gray-600">{u.email}</p>
+                  </div>
+                  {invitedUsers.includes(u.id) ? (
+                    <span className="text-green-500 font-semibold">
+                      Invited
+                    </span>
+                  ) : (
+                    <button
+                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                      onClick={() => inviteUser(u)}
+                    >
+                      Invite
+                    </button>
+                  )}
+                </li>
+              ))}
           </ul>
         </div>
       </CustomModal>
-
       {/* Edit Modal */}
       {isEditModalOpen && (
-        <EventModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} modalTitle="Edit Event" formData={editFormData} onChange={handleEditChange} onFileChange={handleEditFileChange} onSubmit={handleEditSubmit} />
+        <EventModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          modalTitle="Edit Event"
+          formData={editFormData}
+          onChange={handleEditChange}
+          onFileChange={handleEditFileChange}
+          onSubmit={handleEditSubmit}
+        />
       )}
     </div>
   );
 }
 
 export default EventDetails;
-
