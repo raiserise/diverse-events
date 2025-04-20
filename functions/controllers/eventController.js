@@ -1,5 +1,6 @@
 const eventModel = require("../models/eventModel");
 const rsvpModel = require("../models/rsvpModel");
+const notificationModel = require("../models/notificationModel");
 
 const createEvent = async (req, res) => {
   try {
@@ -60,6 +61,9 @@ const deleteEvent = async (req, res) => {
     if (event.creatorId !== req.user.user_id) {
       return res.status(403).json({ error: "Only creator can delete" });
     }
+
+    // Notify users about event cancellation
+    await notificationModel.notifyEventCancellation(eventId, event.title);
 
     // Delete related RSVPs first
     await rsvpModel.deleteRSVPsByEventId(eventId);
