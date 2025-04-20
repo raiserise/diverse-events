@@ -112,6 +112,7 @@ function EventDetails() {
 
   useEffect(() => {
     if (user !== null) loadEvent();
+    // eslint-disable-next-line
   }, [user, id]);
 
   // Check RSVP status and cooldown

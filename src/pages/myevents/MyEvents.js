@@ -67,11 +67,6 @@ function MyEvents() {
         .setLocation(evt.location)
         .setUrl(evt.inviteLink);
 
-      // conditional zoom link
-      // if (evt.format === "Online" && evt.zoomLink) {
-      //   builder = builder.setZoomLink(evt.zoomLink);
-      // }
-
       return builder.build();
     });
 
