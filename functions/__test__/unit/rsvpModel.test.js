@@ -1,5 +1,5 @@
 // Import RSVP and state classes
-const { createRSVP } = require("../../models/rsvpModel");
+const { createRSVP, deleteRSVPsByEventId } = require("../../models/rsvpModel");
 const {
   PendingState,
   ApprovedState,
@@ -42,6 +42,15 @@ jest.mock("firebase-admin", () => {
   // Mock collection to return object with .doc()
   const collectionMock = jest.fn(() => ({
     doc: jest.fn(() => docMock),
+    where: jest.fn(() => ({
+      get: jest.fn().mockResolvedValue({
+        empty: false,
+        forEach: jest.fn((callback) => {
+          callback({ ref: "doc1" });
+          callback({ ref: "doc2" });
+        }),
+      }),
+    })),
   }));
 
   const firestoreFn = jest.fn(() => ({
@@ -52,6 +61,10 @@ jest.mock("firebase-admin", () => {
         update: docMock.update,
       });
     }),
+    batch: jest.fn(() => ({
+      delete: jest.fn(),
+      commit: jest.fn(),
+    })),
   }));
 
   firestoreFn.FieldValue = {
@@ -392,6 +405,11 @@ describe("RSVP and State Pattern", () => {
           },
         },
         setState: jest.fn(),
+        toJSON: jest.fn(function () {
+          // Custom toJSON to simulate actual object serialization
+          const { state, ...rest } = this; // Exclude `state` from serialization
+          return rest;
+        }),
       };
     });
 
@@ -417,6 +435,17 @@ describe("RSVP and State Pattern", () => {
       const cancelledState = new CancelledState(rsvp);
       await cancelledState.reapply();
       expect(rsvp.setState).toHaveBeenCalledWith(expect.any(PendingState));
+    });
+
+    test("should correctly serialize the RSVP object", () => {
+      const serializedRSVP = rsvp.toJSON();
+
+      // Ensure that the 'state' property is excluded from the serialized object
+      expect(serializedRSVP.state).toBeUndefined();
+      expect(serializedRSVP.id).toBe("rsvp1");
+      expect(serializedRSVP.eventId).toBe("event1");
+      expect(serializedRSVP.userId).toBe("user1");
+      expect(serializedRSVP.status).toBe("pending");
     });
   });
 
@@ -1120,29 +1149,119 @@ describe("RSVP and State Pattern", () => {
         });
       });
     });
+  });
 
-    // test("should handle missing event document gracefully", async () => {
-    //   // Mock RSVP data
-    //   dbMock.get.mockResolvedValueOnce({
-    //     exists: true,
-    //     data: () => ({ reapplied: false }), // RSVP is not reapplied
-    //   });
+  describe("deleteRSVPsByEventId", () => {
+    let dbMock;
+    let batchMock;
 
-    //   // Mock event data (missing event)
-    //   dbMock.get.mockResolvedValueOnce({
-    //     exists: false,
-    //   });
+    beforeEach(() => {
+      // Reset all mocks before each test
+      jest.clearAllMocks();
 
-    //   await this.state.onEnter();
+      // Extract the Firestore mock instance
+      dbMock = require("../../config/firebase").db;
 
-    //   // Verify organizer notification uses fallback message
-    //   expect(notificationModel.createNotification).toHaveBeenCalledWith({
-    //     userId: undefined, // Organizer ID is undefined because the event does not exist
-    //     type: "rsvp_received",
-    //     message:
-    //       'User user1 has RSVP\'d as a guest/participant for "your event".',
-    //     relatedEventId: "event1",
-    //   });
-    // });
+      // Mock Firestore methods for dbMock
+      batchMock = {
+        delete: jest.fn(),
+        commit: jest.fn(),
+      };
+
+      dbMock.collection = jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          get: jest.fn(),
+        }),
+      });
+      dbMock.batch = jest.fn().mockReturnValue(batchMock); // Mock batch()
+
+      // Ensure that `get` method resolves with a snapshot (e.g., with docs)
+      dbMock
+        .collection()
+        .where()
+        .get.mockResolvedValue({
+          empty: false,
+          forEach: jest.fn((callback) => {
+            callback({ ref: "doc1" }); // Return a mock document reference
+            callback({ ref: "doc2" });
+          }),
+        });
+    });
+
+    test("should delete all RSVPs for the given eventId", async () => {
+      // Call the method under test
+      await deleteRSVPsByEventId("event1");
+
+      // Verify that the Firestore query was executed
+      expect(dbMock.collection).toHaveBeenCalledWith("rsvps");
+      expect(dbMock.collection().where).toHaveBeenCalledWith(
+        "eventId",
+        "==",
+        "event1"
+      );
+      expect(dbMock.collection().where().get).toHaveBeenCalled();
+
+      // Verify that the batch was created
+      expect(dbMock.batch).toHaveBeenCalled();
+
+      // Verify that the batch.delete method was called for each document
+      expect(batchMock.delete).toHaveBeenCalledWith("doc1");
+      expect(batchMock.delete).toHaveBeenCalledWith("doc2");
+
+      // Verify that the batch.commit method was called
+      expect(batchMock.commit).toHaveBeenCalled();
+    });
+
+    test("should do nothing if no RSVPs exist for the given eventId", async () => {
+      // Mock Firestore query snapshot as empty
+      dbMock.collection().where().get.mockResolvedValue({
+        empty: true,
+      });
+
+      // Call the method under test
+      await deleteRSVPsByEventId("event1");
+
+      // Verify that no batch operations were performed
+      expect(dbMock.batch).not.toHaveBeenCalled();
+    });
+
+    test("should handle errors during Firestore query", async () => {
+      // Mock Firestore query to throw an error
+      dbMock
+        .collection()
+        .where()
+        .get.mockRejectedValue(new Error("Firestore error"));
+
+      // Call the method under test and expect it to throw an error
+      await expect(deleteRSVPsByEventId("event1")).rejects.toThrow(
+        "Firestore error"
+      );
+
+      // Verify that no batch operations were performed
+      expect(dbMock.batch).not.toHaveBeenCalled();
+    });
+
+    test("should handle errors during batch commit", async () => {
+      // Mock Firestore query snapshot with one document
+      const mockSnapshot = {
+        empty: false,
+        forEach: jest.fn((callback) => {
+          callback({ ref: "doc1" });
+        }),
+      };
+
+      dbMock.collection().where().get.mockResolvedValue(mockSnapshot);
+
+      // Mock batch commit to throw an error
+      batchMock.commit.mockRejectedValue(new Error("Batch commit error"));
+
+      // Call the method under test and expect it to throw an error
+      await expect(deleteRSVPsByEventId("event1")).rejects.toThrow(
+        "Batch commit error"
+      );
+
+      // Verify that the batch.delete method was called
+      expect(batchMock.delete).toHaveBeenCalledWith("doc1");
+    });
   });
 });
