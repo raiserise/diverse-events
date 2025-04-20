@@ -1,7 +1,7 @@
 // src/pages/events/EventDetails.js
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getDataById, getAllData, addData, patchData } from "../../api/apiService";
+import { getDataById, getAllData, addData, patchData, deleteData } from "../../api/apiService";
 import FirebaseImage from "../../components/FirebaseImage";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -237,6 +237,18 @@ function EventDetails() {
     catch(err){console.error(err);toast.error("Failed to update.");}
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this event?")) return;
+    try {
+      await deleteData("/events", event.id, true);
+      toast.success("Event deleted successfully");
+      window.location.href = "/events"; // redirect to events list
+    } catch (err) {
+      console.error("Delete failed:", err);
+      toast.error("Failed to delete event.");
+    }
+  }; 
+
   // Render states
   if (loading)
     return (
@@ -422,8 +434,13 @@ function EventDetails() {
         </div>
       )}
 
-      {/* Invite/Edit Buttons */}
+      {/* Invite/Edit/Delete Buttons */}
       <div className="fixed bottom-6 right-6 flex gap-4">
+        {organizers.some((org) => org.id === user?.uid) && (
+          <button onClick={handleDelete} className="bg-red-600 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-red-700 transition">
+            Delete Event
+          </button>
+        )}
         {organizers.some((org) => org.id === user?.uid) && (
           <button onClick={() => setIsInviteOpen(true)} className="bg-purple-500 text-white px-6 py-3 rounded-xl shadow-lg text-lg hover:bg-purple-600 transition">
             Invite Users
