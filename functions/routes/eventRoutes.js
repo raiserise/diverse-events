@@ -19,12 +19,6 @@ router.delete(
 );
 router.get("/events/:eventId", eventController.getEventDetails);
 
-router.get(
-  "/events/:eventId/stats",
-  authMiddleware.auth,
-  eventController.getEventStats
-);
-
 router.post(
   "/events/batch",
   authMiddleware.auth,

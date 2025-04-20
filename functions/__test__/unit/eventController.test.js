@@ -243,39 +243,6 @@ describe("eventController", () => {
     });
   });
 
-  describe("getEventStats", () => {
-    it("should return stats if user is organizer", async () => {
-      const eventId = "event5";
-      const mockEvent = { id: eventId, organizers: [mockUser.user_id] };
-      const rsvps = [
-        { status: "approved" },
-        { status: "declined" },
-        { status: "approved" },
-      ];
-
-      eventModel.getEventById.mockResolvedValue(mockEvent);
-      rsvpModel.getRSVPsByEvent.mockResolvedValue(rsvps);
-      rsvpModel.countRSVPsByStatus.mockImplementation(
-        (arr, status) => arr.filter((r) => r.status === status).length
-      );
-
-      const req = httpMocks.createRequest({
-        method: "GET",
-        params: { eventId },
-        user: mockUser,
-      });
-      const res = httpMocks.createResponse();
-
-      await eventController.getEventStats(req, res);
-      const stats = res._getJSONData();
-
-      expect(res.statusCode).toBe(200);
-      expect(stats.totalRSVPs).toBe(3);
-      expect(stats.attendees).toBe(2);
-      expect(stats.declined).toBe(1);
-    });
-  });
-
   describe("getEventsByIds", () => {
     let req, res;
 
