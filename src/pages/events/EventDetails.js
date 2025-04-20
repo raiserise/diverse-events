@@ -375,6 +375,35 @@ function EventDetails() {
     event.maxParticipants && event.participants.length >= event.maxParticipants;
   const visibleParticipants = participants.slice(0, 10);
 
+/**
+ * Accepts either:
+ *   • Firestore Timestamp object { _seconds, _nanoseconds }
+ *   • ISO‑string or JS Date
+ * Returns a nicely formatted date or “N/A”.
+ */
+const formatEventDate = (field) => {
+  if (!field) return "N/A";
+
+  // 1) Firestore Timestamp
+  if (field._seconds != null) {
+    return new Date(field._seconds * 1000).toLocaleString("en-US", {
+      timeZone: "Asia/Shanghai",
+      dateStyle: "medium",
+      timeStyle: "medium",
+    });
+  }
+
+  // 2) ISO‑string (or native Date)
+  const d = new Date(field);
+  if (isNaN(d.getTime())) return "N/A";
+
+  return d.toLocaleString("en-US", {
+    timeZone: "Asia/Shanghai",
+    dateStyle: "medium",
+    timeStyle: "medium",
+    });
+  };
+
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white shadow-lg rounded-lg relative">
       {event.featuredImage ? (
@@ -480,29 +509,11 @@ function EventDetails() {
           <div className="space-y-4">
             <p>
               <strong className="text-gray-900">Start Date:</strong>{" "}
-              {event.startDate?._seconds
-                ? new Date(event.startDate._seconds * 1000).toLocaleString(
-                    "en-US",
-                    {
-                      timeZone: "Asia/Shanghai",
-                      dateStyle: "medium",
-                      timeStyle: "medium",
-                    }
-                  )
-                : "N/A"}
+              {formatEventDate(event.startDate)}
             </p>
             <p>
               <strong className="text-gray-900">End Date:</strong>{" "}
-              {event.endDate?._seconds
-                ? new Date(event.endDate._seconds * 1000).toLocaleString(
-                    "en-US",
-                    {
-                      timeZone: "Asia/Shanghai",
-                      dateStyle: "medium",
-                      timeStyle: "medium",
-                    }
-                  )
-                : "N/A"}
+              {formatEventDate(event.endDate)}
             </p>
           </div>
         </div>
