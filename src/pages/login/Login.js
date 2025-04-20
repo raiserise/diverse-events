@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useState } from "react";
 import {
   getAuth,
@@ -20,12 +20,6 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (auth) {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [auth, navigate]);
 
   const signInWithGoogle = async () => {
     setAuthing(true);

@@ -11,10 +11,12 @@ import { Google as GoogleIcon } from "@mui/icons-material";
 import { db } from "../../firebase";
 import { doc, setDoc } from "firebase/firestore";
 import compare from "secure-compare";
+import { useAuth } from "../../context/AuthProvider"; // Import the useAuth hook
 
 const Signup = () => {
   const auth = getAuth();
   const navigate = useNavigate(); // Initialize useNavigate
+  const { currentUser } = useAuth(); // Use the login function from AuthProvider
 
   const [authing, setAuthing] = useState(false);
   const [email, setEmail] = useState("");
@@ -25,10 +27,10 @@ const Signup = () => {
   const [successMessage, setSuccessMessage] = useState(""); // State for success message
 
   useEffect(() => {
-    if (auth) {
+    if (currentUser) {
       navigate("/dashboard", { replace: true });
     }
-  }, [auth, navigate]);
+  }, [currentUser, navigate]);
 
   const signUpWithGoogle = async () => {
     setAuthing(true);
