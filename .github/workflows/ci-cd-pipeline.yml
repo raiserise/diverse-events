@@ -105,12 +105,28 @@ jobs:
       - name: Create Firebase Key File
         run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIVERSEEVENTS_AF6EA }}' > ./functions/config/firebase-key.json
 
+      # Run Web Tests with Coverage
       - name: Run Web Firebase tests
-        run: npm test
+        run: npm test -- --coverage
 
+      # Upload Web Coverage Report
+      - name: Upload Web Coverage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage-report
+          path: coverage/
+
+      # Run Function Tests with Coverage
       - name: Run Function Tests
-        run: npm test
+        run: npm test -- --coverage
         working-directory: ./functions
+
+      # Upload Functions Coverage Report
+      - name: Upload Functions Coverage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: functions-coverage-report
+          path: functions/coverage/
 
   deployment:
     runs-on: ubuntu-latest
