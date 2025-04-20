@@ -89,7 +89,7 @@ export const deleteData = async (endPoint, id, requiresAuth = true) => {
 export const patchData = async (endPoint, userData, requiresAuth = true) => {
   try {
     const headers = await authHeaders(requiresAuth);
-    const response = await axios.patch(
+    const response = await axios.put(
       `${API_URL}${endPoint}`,
       userData,
       headers
