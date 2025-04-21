@@ -186,7 +186,7 @@ const Landing = () => {
         <p className="text-gray-600 mb-4">
           &ldquo;DiverseEvents made planning our company retreat so much easier. The RSVP system saved us hours of work!&rdquo;
         </p>
-        <p className="font-medium">- Sarah J., Marketing Director</p>
+        <p className="font-medium">- Aniq, Marketing Director</p>
       </div>
       
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -194,7 +194,7 @@ const Landing = () => {
         <p className="text-gray-600 mb-4">
           &ldquo;I love how easy it is to create and manage events. The notification system keeps everyone in the loop.&rdquo;
         </p>
-        <p className="font-medium">- Michael T., Event Organizer</p>
+        <p className="font-medium">- Chris, Event Organizer</p>
       </div>
       
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -202,7 +202,7 @@ const Landing = () => {
         <p className="text-gray-600 mb-4">
           &ldquo;From community meetups to workshops, this platform handles everything I need for my events.&rdquo;
         </p>
-        <p className="font-medium">- Priya K., Community Leader</p>
+        <p className="font-medium">- Ryan, Community Leader</p>
       </div>
     </div>
   </div>
