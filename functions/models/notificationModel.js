@@ -30,6 +30,31 @@ const createNotification = async ({
   }
 };
 
+const notifyEventCancellation = async (eventId, eventTitle) => {
+  const rsvpSnapshot = await db
+      .collection("rsvps")
+      .where("eventId", "==", eventId)
+      .get();
+
+  if (rsvpSnapshot.empty) return;
+
+  const notifyPromises = [];
+
+  rsvpSnapshot.forEach((doc) => {
+    const rsvpData = doc.data();
+    notifyPromises.push(
+        createNotification({
+          userId: rsvpData.userId,
+          type: "event_cancelled",
+          message: `The event "${eventTitle}" you RSVPed to has been cancelled.`,
+          relatedEventId: eventId,
+        }),
+    );
+  });
+
+  await Promise.all(notifyPromises);
+};
+
 const getNotificationsForUser = async (userId) => {
   try {
     const snapshot = await db
@@ -44,12 +69,6 @@ const getNotificationsForUser = async (userId) => {
 
 const markNotificationAsRead = async (notificationId) => {
   try {
-    // Verify notification ownership
-    // const notification = await db
-    //     .collection("notifications")
-    //     .doc(notificationId)
-    //     .get();
-
     await db.collection("notifications").doc(notificationId).update({
       read: true,
     });
@@ -64,4 +83,5 @@ module.exports = {
   createNotification,
   getNotificationsForUser,
   markNotificationAsRead,
+  notifyEventCancellation,
 };

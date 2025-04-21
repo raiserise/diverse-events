@@ -1,174 +1,184 @@
 const {db} = require("../config/firebase");
 const admin = require("firebase-admin");
+const {
+  PendingState,
+  ApprovedState,
+  RejectedState,
+  CancelledState,
+} = require("../states");
 
-const createRSVP = async (eventId, userId, data) => {
-  const rsvpData = {
-    eventId,
-    userId,
-    status: "pending", // Requires approval
-    type: data.inviteId ? "invited" : "public",
-    inviteId: data.inviteId || null,
-    dietaryRequirements: data.dietaryRequirements || null,
-    organizers: data.organizers,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  };
-
-  // Prevent duplicate RSVP
-  const existingRSVP = await db
-      .collection("rsvps")
-      .where("eventId", "==", eventId)
-      .where("userId", "==", userId)
-      .get();
-
-  if (!existingRSVP.empty) {
-    throw new Error("You have already RSVP'd for this event.");
+class RSVP {
+  constructor(id, data) {
+    this.id = id;
+    this.eventId = data.eventId;
+    this.userId = data.userId;
+    this.status = data.status;
+    this.data = data;
+    this.state = this.createState();
   }
 
-  // Create RSVP without adding to participants
-  const rsvpRef = db.collection("rsvps").doc();
-  await rsvpRef.set(rsvpData);
-
-  return {id: rsvpRef.id, ...rsvpData};
-};
-
-const updateRSVP = async (rsvpId, userId, status) => {
-  const rsvpRef = db.collection("rsvps").doc(rsvpId);
-  const rsvpDoc = await rsvpRef.get();
-
-  if (!rsvpDoc.exists) {
-    throw new Error("RSVP not found.");
+  // State management
+  createState() {
+    switch (this.status) {
+      case "pending":
+        return new PendingState(this);
+      case "approved":
+        return new ApprovedState(this);
+      case "rejected":
+        return new RejectedState(this);
+      case "cancelled":
+        return new CancelledState(this);
+      default:
+        throw new Error(`Invalid RSVP status: ${this.status}`);
+    }
   }
 
-  const rsvpData = rsvpDoc.data();
-
-  const isOrganizer = rsvpData.organizers.includes(userId);
-  const isParticipant = rsvpData.userId === userId;
-
-  if (status === "cancelled" && !isParticipant) {
-    throw new Error(
-        "Unauthorized: Only the participant can cancel their RSVP.",
-    );
+  setState(newState) {
+    this.state = newState;
+    this.status = newState.constructor.name.replace("State", "").toLowerCase();
   }
 
-  // Allow participants to update to specific statuses
-  const allowedParticipantStatuses = ["pending"]; // Adjust as needed
-  if (
-    status !== "cancelled" &&
-    !isOrganizer &&
-    !(isParticipant && allowedParticipantStatuses.includes(status))
-  ) {
-    throw new Error("Unauthorized: Only organizers can update RSVP status.");
+  // State transitions
+  async approve() {
+    return this.state.approve();
   }
 
-  if (rsvpData.status === status) {
-    throw new Error("No change detected in RSVP status.");
+  async reject() {
+    return this.state.reject();
   }
 
-  const eventRef = db.collection("events").doc(rsvpData.eventId);
+  async cancel() {
+    return this.state.cancel();
+  }
 
-  return db.runTransaction(async (transaction) => {
-    const eventDoc = await transaction.get(eventRef);
-    if (!eventDoc.exists) {
+  // Custom serialization to handle circular references
+  toJSON() {
+    // eslint-disable-next-line no-unused-vars
+    const {state, ...rest} = this; // Exclude the `state` property
+    return rest;
+  }
+
+  // Static methods (original functionality preserved)
+  static async createRSVP(eventId, userId, data) {
+    const eventSnap = await db.collection("events").doc(eventId).get();
+
+    if (!eventSnap.exists) {
       throw new Error("Event not found.");
     }
 
-    const eventData = eventDoc.data();
-    const participants = eventData.participants || [];
+    const eventData = eventSnap.data();
 
-    const lastCancelledAt = rsvpData.lastCancelledAt?.toDate() || null;
-    const cooldownMinutes = 10;
-    const now = new Date();
+    // Optional: Prevent RSVP if the event is closed or archived
+    if (eventData.status === "cancelled" || eventData.status === "closed") {
+      throw new Error("RSVPs are no longer accepted for this event.");
+    }
 
-    if (status === "cancelled") {
-      transaction.update(rsvpRef, {
-        lastCancelledAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+    if (eventData.participants?.length >= eventData.maxParticipants) {
+      throw new Error("Event is full. RSVP not allowed.");
+    }
 
-      if (lastCancelledAt) {
-        const diffMinutes = (now - lastCancelledAt) / (1000 * 60);
-        if (diffMinutes < cooldownMinutes) {
-          throw new Error(
-              `You must wait ${cooldownMinutes - diffMinutes} minutes before RSVPing again.`,
-          );
-        }
+    const existingRSVP = await db
+        .collection("rsvps")
+        .where("eventId", "==", eventId)
+        .where("userId", "==", userId)
+        .limit(1)
+        .get();
+
+    if (!existingRSVP.empty) {
+      const rsvpDoc = existingRSVP.docs[0];
+      const rsvpData = rsvpDoc.data();
+      const rsvpInstance = new RSVP(rsvpDoc.id, rsvpData);
+
+      // Delegate to current state (e.g., CancelledState)
+      if (rsvpInstance.status === "cancelled") {
+        await rsvpInstance.state.reapply(data); // Use reapply method in CancelledState
+        return rsvpInstance; // Return updated RSVP instance
       }
+
+      throw new Error("You have already RSVP'd for this event.");
     }
 
-    if (status === "approved") {
-      if (
-        eventData.maxParticipants &&
-        participants.length >= eventData.maxParticipants
-      ) {
-        throw new Error("Event is at full capacity.");
-      }
-      transaction.update(eventRef, {
-        participants: admin.firestore.FieldValue.arrayUnion(rsvpData.userId),
-      });
-    }
+    // If no existing RSVP, create a new one
+    const rsvpData = {
+      eventId,
+      userId,
+      status: "pending",
+      organizers: data.organizers,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
 
-    if (status === "cancelled") {
-      if (!["pending", "approved"].includes(rsvpData.status)) {
-        throw new Error("Cannot cancel a non-pending/approved RSVP.");
-      }
-      transaction.update(eventRef, {
-        participants: admin.firestore.FieldValue.arrayRemove(rsvpData.userId),
-      });
-    }
-
-    if (rsvpData.status === "approved" && status !== "approved") {
-      transaction.update(eventRef, {
-        participants: admin.firestore.FieldValue.arrayRemove(rsvpData.userId),
-      });
-    }
-
-    const shouldResetCreatedDate =
-      rsvpData.status === "cancelled" && status !== "cancelled";
-
-    transaction.update(rsvpRef, {
-      status,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      ...(shouldResetCreatedDate && {
-        createdDate: admin.firestore.FieldValue.serverTimestamp(),
-      }),
-    });
-
-    return {id: rsvpId, status};
-  });
-};
-
-const getRSVPsByStatus = async (eventId, status) => {
-  let query = db.collection("rsvps").where("eventId", "==", eventId);
-  if (status) {
-    query = query.where("status", "==", status);
-  }
-  const snapshot = await query.get();
-  return snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}));
-};
-
-const getRSVPById = async (rsvpId) => {
-  const rsvpDoc = await db.collection("rsvps").doc(rsvpId).get();
-
-  if (!rsvpDoc.exists) {
-    throw new Error("RSVP not found.");
+    const rsvpRef = db.collection("rsvps").doc();
+    await rsvpRef.set(rsvpData);
+    return new RSVP(rsvpRef.id, rsvpData);
   }
 
-  return {id: rsvpDoc.id, ...rsvpDoc.data()};
-};
+  static async updateRSVP(rsvpId, userId, status) {
+    const rsvp = await RSVP.load(rsvpId);
 
-const getRSVPsByEvent = async (eventId) => {
-  try {
+    // Authorization checks
+    // eslint-disable-next-line no-unused-vars
+    const isOrganizer = rsvp.data.organizers.includes(userId);
+    const isParticipant = rsvp.userId === userId;
+
+    if (status === "cancelled" && !isParticipant) {
+      throw new Error("Only the participant can cancel their RSVP.");
+    }
+
+    // State transition
+    switch (status) {
+      case "approved":
+        await rsvp.approve();
+        break;
+      case "rejected":
+        await rsvp.reject();
+        break;
+      case "cancelled":
+        await rsvp.cancel();
+        break;
+      default:
+        throw new Error(`Invalid status transition: ${status}`);
+    }
+
+    return rsvp;
+  }
+
+  static async load(rsvpId) {
+    const doc = await db.collection("rsvps").doc(rsvpId).get();
+    if (!doc.exists) throw new Error("RSVP not found.");
+    return new RSVP(doc.id, doc.data());
+  }
+
+  static async getRSVPsByStatus(eventId, status) {
+    let query = db.collection("rsvps").where("eventId", "==", eventId);
+    if (status) query = query.where("status", "==", status);
+
+    const snapshot = await query.get();
+
+    // Return plain objects instead of RSVP instances to avoid circular references
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  }
+
+  static async getRSVPById(rsvpId) {
+    return RSVP.load(rsvpId);
+  }
+
+  static async getRSVPsByEvent(eventId) {
     const snapshot = await db
         .collection("rsvps")
         .where("eventId", "==", eventId)
         .get();
-    return snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}));
-  } catch (error) {
-    throw new Error(`Error fetching RSVPs for event: ${error.message}`);
-  }
-};
 
-const findRSVP = async (eventId, userId) => {
-  try {
+    // Return plain objects instead of RSVP instances
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  }
+
+  static async findRSVP(eventId, userId) {
     const snapshot = await db
         .collection("rsvps")
         .where("eventId", "==", eventId)
@@ -178,43 +188,57 @@ const findRSVP = async (eventId, userId) => {
 
     return snapshot.empty ?
       null :
-      {
-        id: snapshot.docs[0].id,
-        ...snapshot.docs[0].data(),
-      };
-  } catch (error) {
-    throw new Error(`RSVP lookup failed: ${error.message}`);
+      new RSVP(snapshot.docs[0].id, snapshot.docs[0].data());
   }
-};
 
-const countRSVPsByStatus = (rsvps, status) => {
-  return rsvps.filter((rsvp) => rsvp.status === status).length;
-};
+  static countRSVPsByStatus(rsvps, status) {
+    return rsvps.filter((rsvp) => rsvp.status === status).length;
+  }
 
-const getUserRSVPs = async (userId) => {
-  try {
-    console.log(`Fetching RSVPs for user: ${userId}`);
+  static async getUserRSVPs(userId) {
     const snapshot = await db
         .collection("rsvps")
         .where("userId", "==", userId)
         .get();
 
-    if (snapshot.empty) {
-      console.log(`No RSVPs found for user: ${userId}`);
-    }
+    return snapshot.docs
+        .map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toMillis?.() ?? 0,
+            lastCancelledAt: data.lastCancelledAt?.toMillis?.() ?? 0,
+          };
+        })
+        .sort((a, b) => {
+        // Sort pending first
+          if (a.status === "pending" && b.status !== "pending") return -1;
+          if (a.status !== "pending" && b.status === "pending") return 1;
 
-    return snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}));
-  } catch (error) {
-    throw new Error(`Error fetching user RSVPs: ${error.message}`);
+          // Then by lastCancelledAt descending
+          if (b.lastCancelledAt !== a.lastCancelledAt) {
+            return b.lastCancelledAt - a.lastCancelledAt;
+          }
+
+          // Then by createdAt descending
+          return b.createdAt - a.createdAt;
+        });
   }
-};
-module.exports = {
-  createRSVP,
-  updateRSVP,
-  getRSVPsByStatus,
-  getRSVPById,
-  getRSVPsByEvent,
-  countRSVPsByStatus,
-  findRSVP,
-  getUserRSVPs,
-};
+
+  static async deleteRSVPsByEventId(eventId) {
+    const rsvpsRef = db.collection("rsvps").where("eventId", "==", eventId);
+    const snapshot = await rsvpsRef.get();
+
+    if (snapshot.empty) return;
+
+    const batch = db.batch();
+    snapshot.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+  }
+}
+
+module.exports = RSVP;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { patchData, getAllData, getDataById } from "../../api/apiService";
+import { patchData, getAllData, postData } from "../../api/apiService";
 import FirebaseImage from "../../components/FirebaseImage";
 import { formatDate, formatTime } from "../../utils/dateUtils";
 import { toast } from "react-toastify";
@@ -16,10 +16,14 @@ const RSVP = () => {
 
   const fetchData = async () => {
     try {
+      //Fetch all events managed by the user
       const userEventsData = await getAllData("/events/me", true);
-      const userEventIds = userEventsData.map((event) => event.id);
+      console.log("userEventsData:", userEventsData);
 
-      //Fetch pending RSVPs for the user's events
+      const userEventIds = userEventsData.map((event) => event.id);
+      console.log("userEventIds:", userEventIds);
+
+      //Fetch pending RSVPs for those events
       const fetchManagedRSVPs = async (eventId) => {
         try {
           const result = await getAllData(`/rsvp/${eventId}`, true);
@@ -30,73 +34,97 @@ const RSVP = () => {
         }
       };
 
-      const managedPromises = userEventIds.map(fetchManagedRSVPs);
-      const managedResults = await Promise.all(managedPromises);
-      const allManagedRSVPs = managedResults.flat();
-
-      //Fetch the user's RSVPs (events they've responded to)
-      const myRSVPData = await getAllData("/rsvp/user", true);
-      const rsvps = myRSVPData.rsvps;
-
-      //Fetch event details for the user's RSVPs
-      const eventIdsFromRSVPs = [...new Set(rsvps.map((rsvp) => rsvp.eventId))];
-      const eventPromises = eventIdsFromRSVPs.map((eventId) =>
-        getDataById("/events", eventId, true)
+      const managedResults = await Promise.all(
+        userEventIds.map(fetchManagedRSVPs)
       );
-      const events = await Promise.all(eventPromises);
+      const allManagedRSVPs = managedResults.flat();
+      console.log("RSVP for managed events:", allManagedRSVPs);
 
-      //Fetch event details for all pending RSVPs
+      //Fetch RSVPs made by the user
+      const myRSVPData = await getAllData("/rsvp/user", true);
+      const rsvps = myRSVPData?.rsvps || [];
+      console.log("RSVP by current user:", rsvps);
+
+      //Fetch event details in batch for user's RSVPs
+      const eventIdsFromRSVPs = [...new Set(rsvps.map((rsvp) => rsvp.eventId))];
+      let events = [];
+
+      if (eventIdsFromRSVPs.length > 0) {
+        const eventBatchResponse = await postData(
+          "/events/batch",
+          { ids: eventIdsFromRSVPs },
+          true
+        );
+        events = eventBatchResponse.events || [];
+        console.log("Events from my RSVPs:", events);
+      }
+
+      //Fetch event details for managed RSVPs in batch
       const eventIdsFromPendingRSVPs = [
         ...new Set(allManagedRSVPs.map((rsvp) => rsvp.eventId)),
       ];
-      const userEventPromises = eventIdsFromPendingRSVPs.map((eventId) =>
-        getDataById("/events", eventId, true)
-      );
-      const userEvents = await Promise.all(userEventPromises);
+      let userEvents = [];
 
-      //Fetch user details for each RSVP (for pending RSVPs)
-      const fetchUserDetails = async (userId) => {
-        try {
-          const userData = await getDataById("/users", userId, true);
-          console.log("userData:", userData);
-          return userData || { name: "Unknown User", email: "Unknown Email" };
-        } catch (error) {
-          console.error(
-            `Error fetching user details for userId ${userId}:`,
-            error
-          );
-          return "Unknown User";
-        }
-      };
+      if (eventIdsFromPendingRSVPs.length > 0) {
+        const userEventBatchResponse = await postData(
+          "/events/batch",
+          { ids: eventIdsFromPendingRSVPs },
+          true
+        );
+        userEvents = userEventBatchResponse.events || [];
+        console.log("Events from managed RSVPs:", userEvents);
+      }
 
-      const pendingUserPromises = allManagedRSVPs.map((rsvp) =>
-        fetchUserDetails(rsvp.userId)
-      );
-      const pendingUsers = await Promise.all(pendingUserPromises);
+      //Batch fetch users involved in managed RSVPs
+      const uniqueUserIds = [
+        ...new Set(allManagedRSVPs.map((rsvp) => rsvp.userId)),
+      ];
+      let userBatchResponse = { users: [] };
 
-      //Enrich pending RSVPs with user details
-      const enrichedPendingRSVPs = allManagedRSVPs.map((rsvp, index) => ({
-        ...rsvp,
-        event: userEvents.find((event) => event.id === rsvp.eventId),
-        userName: pendingUsers.at(index).name,
-        email: pendingUsers.at(index).email,
-      }));
+      if (uniqueUserIds.length > 0) {
+        userBatchResponse = await postData(
+          "/users/batch",
+          { ids: uniqueUserIds },
+          true
+        );
+        console.log("Batch-fetched users:", userBatchResponse.users);
+      }
 
-      //Fetch user details for each RSVP (for user's RSVPs)
-      const userPromises = rsvps.map((rsvp) => fetchUserDetails(rsvp.userId));
-      const userNames = await Promise.all(userPromises);
+      const userMap = new Map();
+      userBatchResponse.users.forEach((user) => {
+        userMap.set(user.id, user);
+      });
 
-      //Combine RSVPs with event details
-      const enrichedRSVPs = rsvps.map((rsvp, index) => ({
-        ...rsvp,
-        event: events.find((event) => event.id === rsvp.eventId),
-        userName: userNames.at(index),
-      }));
+      //Enrich pending RSVPs with user + event
+      const enrichedPendingRSVPs = allManagedRSVPs.map((rsvp) => {
+        const user = userMap.get(rsvp.userId) || {
+          name: "Unknown User",
+          email: "Unknown Email",
+        };
+        const event = userEvents.find((event) => event.id === rsvp.eventId);
+        return {
+          ...rsvp,
+          event,
+          userName: user.name,
+          email: user.email,
+        };
+      });
+      console.log("Enriched pending RSVPs:", enrichedPendingRSVPs);
 
-      //Update state
+      //Enrich current user's RSVPs with event + name
+      const enrichedRSVPs = rsvps.map((rsvp) => {
+        const event = events.find((event) => event.id === rsvp.eventId);
+        const user = userMap.get(rsvp.userId); // Might be undefined
+        return {
+          ...rsvp,
+          event,
+          userName: user?.name || "You",
+        };
+      });
+
+      //Update UI state
       setMyRSVPs(enrichedRSVPs);
       setPendingRSVPs(enrichedPendingRSVPs);
-
       setLoading(false);
     } catch (error) {
       setError(error.message);
@@ -131,9 +159,6 @@ const RSVP = () => {
   return (
     <div className="container mx-auto p-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-4">
-          RSVP Management
-        </h1>
         <div className="flex space-x-4 border-b border-gray-200">
           <button
             className={`pb-3 font-medium ${
@@ -374,12 +399,6 @@ const ManageRSVPList = ({ rsvps, onApprove, onReject }) => {
                     >
                       {rsvp.status.toUpperCase()}
                     </span>
-                  </div>
-                )}
-                {rsvp.dietaryRequirements && (
-                  <div className="bg-yellow-100 p-3 rounded mt-4">
-                    <p className="font-medium">Dietary Needs:</p>
-                    <p>{rsvp.dietaryRequirements}</p>
                   </div>
                 )}
               </div>

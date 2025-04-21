@@ -1,48 +1,28 @@
 const rsvpModel = require("../models/rsvpModel");
-const notificationModel = require("../models/notificationModel");
-const inviteModel = require("../models/inviteModel");
 const eventModel = require("../models/eventModel");
 
 const submitRSVP = async (req, res) => {
   try {
-    const {eventId, inviteId, dietaryRequirements, organizers} = req.body;
+    const {eventId, organizers} = req.body;
     const userId = req.user.user_id;
-    const email = req.user.email;
 
+    // Create or update RSVP using the model
     const rsvp = await rsvpModel.createRSVP(eventId, userId, {
       organizers,
-      inviteId,
-      dietaryRequirements,
     });
 
-    // If RSVP is from an invite, update invite status
-    if (inviteId) {
-      await inviteModel.updateInviteStatus(inviteId, "accepted");
+    // Load full RSVP instance (including state class)
+    const rsvpInstance = await rsvpModel.load(rsvp.id);
+
+    // Call onEnter or another state-driven action
+    if (rsvpInstance.state.onEnter) {
+      await rsvpInstance.state.onEnter(); // optional hook
     }
 
-    // Fetch event details
-    const event = await eventModel.getEventById(eventId);
-    if (event) {
-      await notificationModel.createNotification({
-        userId: event.creatorId,
-        type: "rsvp_received",
-        message: `User email ${email} has RSVP'd as a guest/participant.`,
-        relatedEventId: eventId,
-      });
-    }
-
-    // Notify the RSVP user
-    await notificationModel.createNotification({
-      userId,
-      type: "rsvp_confirmation",
-      // eslint-disable-next-line max-len
-      message: `You have successfully RSVP'd as a guest/participant for the event.`,
-      relatedEventId: eventId,
-    });
-
-    res.status(201).json(rsvp);
+    res.status(201).json(rsvpInstance);
   } catch (error) {
-    res.status(400).json({error: error.message});
+    console.error("RSVP creation error:", error);
+    return res.status(400).json({error: error.message});
   }
 };
 
@@ -51,6 +31,7 @@ const checkRSVP = async (req, res) => {
     const {eventId} = req.params;
     const userId = req.user.user_id;
 
+    // Find RSVP using the model
     const rsvp = await rsvpModel.findRSVP(eventId, userId);
 
     if (!rsvp) {
@@ -61,7 +42,7 @@ const checkRSVP = async (req, res) => {
       exists: true,
       rsvpId: rsvp.id,
       status: rsvp.status,
-      lastCancelledAt: rsvp.lastCancelledAt || null,
+      lastCancelledAt: rsvp.data.lastCancelledAt ?? null,
     });
   } catch (error) {
     res.status(500).json({error: error.message});
@@ -72,7 +53,6 @@ const updateRSVPStatus = async (req, res) => {
   try {
     const {rsvpId} = req.params;
     const {status} = req.body;
-    const userId = req.user.user_id;
 
     // Fetch RSVP details
     const rsvpData = await rsvpModel.getRSVPById(rsvpId);
@@ -80,38 +60,30 @@ const updateRSVPStatus = async (req, res) => {
       return res.status(404).json({error: "RSVP not found."});
     }
 
-    // Ensure only the RSVP owner can update it
-    const updatedRSVP = await rsvpModel.updateRSVP(rsvpId, userId, status);
+    // Load RSVP instance and delegate to state class
+    const rsvpInstance = await rsvpModel.load(rsvpId);
 
-    // Generate notification message dynamically
-    const statusMessages = new Map([
-      [
-        "approved",
-        "Your RSVP has been approved. You are now confirmed as a guest/participant for the event.",
-      ],
-      ["rejected", "Your RSVP for the event has been rejected."],
-      ["cancelled", "Your RSVP for the event has been cancelled."],
-    ]);
+    switch (status) {
+      case "approved":
+        await rsvpInstance.approve();
+        break;
+      case "rejected":
+        await rsvpInstance.reject();
+        break;
+      case "cancelled":
+        await rsvpInstance.cancel();
+        break;
+      default:
+        throw new Error("Invalid status transition.");
+    }
 
-    // Validate and get message
-    const message =
-      statusMessages.get(status) || "Your RSVP status has been updated.";
-
-    // Notify the RSVP user
-    await notificationModel.createNotification({
-      userId,
-      type: "rsvp_confirmation",
-      message,
-      relatedEventId: rsvpData.eventId,
-    });
-
-    res.status(200).json(updatedRSVP);
+    // Notification logic handled in state classes
+    res.status(200).json({message: `RSVP ${status} successfully.`});
   } catch (error) {
     res.status(400).json({error: error.message});
   }
 };
 
-// Get RSVPs by status for an event (Organizer Only)
 const getRSVPsByStatus = async (req, res) => {
   try {
     const {eventId} = req.params;
@@ -127,11 +99,12 @@ const getRSVPsByStatus = async (req, res) => {
     }
 
     // Validate RSVP status filter
-    const validStatuses = ["pending", "approved", "rejected"];
+    const validStatuses = ["pending", "approved", "rejected", "cancelled"];
     if (status && !validStatuses.includes(status)) {
       return res.status(400).json({error: "Invalid RSVP status provided."});
     }
 
+    // Get RSVPs by status using the model
     const rsvps = await rsvpModel.getRSVPsByStatus(eventId, status);
     res.status(200).json({rsvps});
   } catch (error) {
@@ -139,13 +112,12 @@ const getRSVPsByStatus = async (req, res) => {
   }
 };
 
-// Get all RSVPs for the logged-in user
 const getRSVPsByUser = async (req, res) => {
   try {
     const userId = req.user.user_id;
-    console.log(`User ID from request: ${userId}`);
+
+    // Fetch RSVPs for the logged-in user
     const rsvps = await rsvpModel.getUserRSVPs(userId);
-    console.log(`Retrieved RSVPs:`, rsvps); // Log the fetched RSVPs
 
     res.status(200).json({rsvps});
   } catch (error) {

@@ -11,10 +11,11 @@
     "security/detect-possible-timing-attacks": "error",
     "security/detect-child-process": "error",
     "react/prop-types": "off",
+    "require-jsdoc": "off",
     "max-len": [
       "error",
       {
-        "code": 110,
+        "code": 140,
         "ignoreStrings": true,
         "ignoreTemplateLiterals": true,
         "ignoreUrls": true

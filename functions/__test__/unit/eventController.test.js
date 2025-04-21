@@ -1,27 +1,60 @@
 const httpMocks = require("node-mocks-http");
 const eventController = require("../../controllers/eventController");
 const eventModel = require("../../models/eventModel");
-const inviteModel = require("../../models/inviteModel");
-const rsvpModel = require("../../models/rsvpModel");
 
 jest.mock("../../models/eventModel");
-jest.mock("../../models/inviteModel");
 jest.mock("../../models/rsvpModel");
 
 describe("eventController", () => {
   const mockUser = {user_id: "user123"};
 
+  describe("getAllEvents", () => {
+    it("should return events for an authenticated user", async () => {
+      const req = {user: {user_id: "user123"}};
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+
+      // Mock the eventModel.getAllEvents function to return a list of events
+      eventModel.getAllEvents.mockResolvedValue([{id: 1, name: "Event 1"}]);
+
+      await eventController.getAllEvents(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith([{id: 1, name: "Event 1"}]);
+    });
+
+    it("should return 500 if there is an error in retrieving all events", async () => {
+      const req = {user: {user_id: "user123"}};
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+
+      // Mock the eventModel.getAllEvents function to throw an error
+      eventModel.getAllEvents.mockRejectedValue(
+          new Error("Error fetching all events"),
+      );
+
+      await eventController.getAllEvents(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        error: "Error fetching all events",
+      });
+    });
+  });
+
   describe("createEvent", () => {
-    it("should create an event and optional invites", async () => {
+    it("should create an event", async () => {
       const mockEvent = {id: "event123", title: "Test Event"};
       eventModel.createEvent.mockResolvedValue(mockEvent);
-      inviteModel.createInvite.mockResolvedValue(true);
 
       const req = httpMocks.createRequest({
         method: "POST",
         body: {
           title: "Test Event",
-          invites: ["a@b.com", "c@d.com"],
         },
         user: mockUser,
       });
@@ -38,10 +71,6 @@ describe("eventController", () => {
             creatorId: mockUser.user_id,
           }),
       );
-      expect(inviteModel.createInvite).toHaveBeenCalledWith("event123", [
-        "a@b.com",
-        "c@d.com",
-      ]);
     });
 
     it("should return 500 on error", async () => {
@@ -75,6 +104,22 @@ describe("eventController", () => {
       expect(res.statusCode).toBe(200);
       expect(res._getJSONData()).toEqual(mockEvents);
     });
+
+    it("should return 500 if there is an error in retrieving user events", async () => {
+      const req = {user: {user_id: "user123"}};
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+
+      // Mock the eventModel.getEventsByUser function to throw an error
+      eventModel.getEventsByUser.mockRejectedValue(new Error("Database error"));
+
+      await eventController.getUserEvents(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({error: "Database error"});
+    });
   });
 
   describe("updateEvent", () => {
@@ -98,6 +143,26 @@ describe("eventController", () => {
       await eventController.updateEvent(req, res);
       expect(res.statusCode).toBe(200);
       expect(res._getJSONData()).toEqual(updatedEvent);
+    });
+
+    it("should return 403 if the user is not authorized to update the event", async () => {
+      const req = {
+        user: {user_id: "user123"},
+        params: {eventId: "event123"},
+        body: {name: "Updated Event"},
+      };
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+
+      // Mock the eventModel.getEventById function to return an event that doesn't include the user as an organizer
+      eventModel.getEventById.mockResolvedValue({organizers: ["user456"]});
+
+      await eventController.updateEvent(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({error: "Not authorized"});
     });
 
     it("should return 403 if user is not an organizer", async () => {
@@ -140,6 +205,27 @@ describe("eventController", () => {
       expect(res._getJSONData().message).toMatch(/deleted/i);
     });
 
+    it("should return 403 if the user is not the creator of the event", async () => {
+      const req = {
+        user: {user_id: "user123"},
+        params: {eventId: "event123"},
+      };
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+
+      // Mock the eventModel.getEventById function to return an event with a different creatorId
+      eventModel.getEventById.mockResolvedValue({creatorId: "user456"});
+
+      await eventController.deleteEvent(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({
+        error: "Only creator can delete",
+      });
+    });
+
     it("should return 403 if not creator", async () => {
       const event = {id: "event4", creatorId: "notYou"};
       eventModel.getEventById.mockResolvedValue(event);
@@ -156,39 +242,110 @@ describe("eventController", () => {
     });
   });
 
-  describe("getEventStats", () => {
-    it("should return stats if user is organizer", async () => {
-      const eventId = "event5";
-      const mockEvent = {id: eventId, organizers: [mockUser.user_id]};
-      const invites = [{}, {}, {}];
-      const rsvps = [
-        {status: "approved"},
-        {status: "declined"},
-        {status: "approved"},
-      ];
+  describe("getEventsByIds", () => {
+    let req;
+    let res;
 
-      eventModel.getEventById.mockResolvedValue(mockEvent);
-      inviteModel.getInvitesByEvent.mockResolvedValue(invites);
-      rsvpModel.getRSVPsByEvent.mockResolvedValue(rsvps);
-      rsvpModel.countRSVPsByStatus.mockImplementation(
-          (arr, status) => arr.filter((r) => r.status === status).length,
-      );
+    beforeEach(() => {
+      req = {body: {}};
+      res = {
+        status: jest.fn(() => res),
+        json: jest.fn(),
+      };
+      jest.clearAllMocks();
+    });
 
-      const req = httpMocks.createRequest({
-        method: "GET",
-        params: {eventId},
-        user: mockUser,
+    test("should return 400 if ids is missing", async () => {
+      req.body = {}; // no ids
+
+      await eventController.getEventsByIds(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: "ids must be a non-empty array",
       });
-      const res = httpMocks.createResponse();
+    });
 
-      await eventController.getEventStats(req, res);
-      const stats = res._getJSONData();
+    test("should return 400 if ids is empty", async () => {
+      req.body = {ids: []};
 
-      expect(res.statusCode).toBe(200);
-      expect(stats.totalInvites).toBe(3);
-      expect(stats.totalRSVPs).toBe(3);
-      expect(stats.attendees).toBe(2);
-      expect(stats.declined).toBe(1);
+      await eventController.getEventsByIds(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: "ids must be a non-empty array",
+      });
+    });
+
+    test("should return 200 and events if ids are valid", async () => {
+      const mockEvents = [
+        {id: "event1", title: "Test Event 1"},
+        {id: "event2", title: "Test Event 2"},
+      ];
+      req.body = {ids: ["event1", "event2"]};
+      eventModel.getEventsByIds.mockResolvedValue(mockEvents);
+
+      await eventController.getEventsByIds(req, res);
+
+      expect(eventModel.getEventsByIds).toHaveBeenCalledWith([
+        "event1",
+        "event2",
+      ]);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({events: mockEvents});
+    });
+  });
+
+  describe("getEventDetails", () => {
+    it("should return event details for a valid eventId", async () => {
+      const req = {params: {eventId: "event123"}};
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+
+      eventModel.getEventById.mockResolvedValue({
+        id: "event123",
+        name: "Sample Event",
+      });
+
+      await eventController.getEventDetails(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        id: "event123",
+        name: "Sample Event",
+      });
+    });
+
+    it("should return 500 if there is an error in retrieving the event details", async () => {
+      const req = {params: {eventId: "event123"}};
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+
+      eventModel.getEventById.mockRejectedValue(new Error("Event not found"));
+
+      await eventController.getEventDetails(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({error: "Event not found"});
+    });
+
+    it("should return 500 if the eventId is invalid or missing", async () => {
+      const req = {params: {eventId: ""}};
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+
+      eventModel.getEventById.mockRejectedValue(new Error("Invalid event ID"));
+
+      await eventController.getEventDetails(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({error: "Invalid event ID"});
     });
   });
 });

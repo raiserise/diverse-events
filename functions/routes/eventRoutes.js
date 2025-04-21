@@ -17,13 +17,12 @@ router.delete(
     authMiddleware.auth,
     eventController.deleteEvent,
 );
-router.get("/events/search", eventController.searchEvents);
 router.get("/events/:eventId", eventController.getEventDetails);
 
-router.get(
-    "/events/:eventId/stats",
+router.post(
+    "/events/batch",
     authMiddleware.auth,
-    eventController.getEventStats,
+    eventController.getEventsByIds,
 );
 
 module.exports = router;

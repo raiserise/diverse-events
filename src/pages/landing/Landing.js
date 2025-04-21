@@ -1,9 +1,20 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthProvider";
 import { Link } from "react-router-dom";
 import Navbar from "../../components/NavBar";
 import Header from "../../components/Header";
 
 const Landing = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
+
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
       {/* Navbar */}

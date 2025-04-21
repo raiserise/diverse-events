@@ -1,147 +1,103 @@
-// src/pages/MyEvents.js
+// src/pages/events/MyEvents.js
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthProvider";
-import { getFirestore, collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
-import { Link } from "react-router-dom";
-import FirebaseImage from "../../components/FirebaseImage";
+import EventCard from "../../components/EventCard";
 import EventModal from "../../components/EventModal";
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-
-const DEFAULT_IMAGE = "gs://diverseevents-af6ea.firebasestorage.app/noimage.jpg";
+import { useEventForm } from "../../hooks/useEventForm";
+import { useUserEvents } from "../../hooks/useUserEvents";
+import EventsFilter from "../../components/EventsFilter";
+import EventBuilder from "../../builders/EventBuilders";
 
 function MyEvents() {
   const { user } = useAuth();
-  const [myEvents, setMyEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { events, loading, error } = useUserEvents(user?.uid);
 
-  // Form state for creating a new event
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    category: "",
-    location: "",
-    startDate: "",
-    endDate: "",
-    duration: "",
-    language: "English",
-    acceptsRSVP: false,
-    featuredImage: "",
-    maxParticipants: "",
-    privacy: "public",
-    format: "Physical",
-    terms: "",
-    status: "active",
-    inviteLink: "",
-  });
-  // State for file upload
-  const [imageFile, setImageFile] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFormat, setSelectedFormat] = useState("");
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
+  const {
+    formData,
+    handleChange,
+    handleFileChange,
+    handleSubmit,
+    isSubmitting,
+    submitError,
+  } = useEventForm(() => setIsModalOpen(false));
+  const onSubmitEvent = (e) => handleSubmit(e, user?.uid);
 
-  const handleFileChange = (e) => {
-    if (e.target.files[0]) {
-      setImageFile(e.target.files[0]);
-    }
-  };
-
-  const uploadImage = (file) => {
-    return new Promise((resolve, reject) => {
-      const storage = getStorage();
-      const storageRef = ref(storage, `events/${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on(
-        "state_changed",
-        null,
-        (error) => reject(error),
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref)
-            .then((url) => resolve(url))
-            .catch((err) => reject(err));
-        }
-      );
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!user) return;
-    const startDateTimestamp = formData.startDate ? new Date(formData.startDate) : null;
-    const endDateTimestamp = formData.endDate ? new Date(formData.endDate) : null;
-    let featuredImageUrl = DEFAULT_IMAGE;
-    if (imageFile) {
-      try {
-        featuredImageUrl = await uploadImage(imageFile);
-      } catch (err) {
-        console.error("Error uploading image:", err);
-        featuredImageUrl = DEFAULT_IMAGE;
-      }
-    }
-    const newEventData = {
-      ...formData,
-      category: formData.category.split(",").map((cat) => cat.trim()),
-      featuredImage: featuredImageUrl,
-      organizers: [user.uid],
-      creatorId: user.uid,
-      invitedUsers: [],
-      participants: [],
-      startDate: startDateTimestamp,
-      endDate: endDateTimestamp,
-    };
-
-    const db = getFirestore();
-    try {
-      await addDoc(collection(db, "events"), {
-        ...newEventData,
-        createdAt: serverTimestamp(),
-      });
-      setIsModalOpen(false);
-      // Optionally reload the page or update state
-    } catch (error) {
-      console.error("Error adding document:", error);
-    }
-  };
-
+  const [builtEvents, setBuiltEvents] = useState([]);
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
+    if (!events) {
+      setBuiltEvents([]);
       return;
     }
-    const fetchMyEvents = async () => {
-      try {
-        const db = getFirestore();
-        const eventsRef = collection(db, "events");
-        const q = query(eventsRef, where("organizers", "array-contains", user.uid));
-        const querySnapshot = await getDocs(q);
-        const eventsList = [];
-        querySnapshot.forEach((doc) => {
-          eventsList.push({ id: doc.id, ...doc.data() });
-        });
-        setMyEvents(eventsList);
-      } catch (err) {
-        console.error("Error fetching events:", err);
-        setError("Failed to fetch your events.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchMyEvents();
-  }, [user]);
+
+    const list = events.map((evt) => {
+      // normalize start/end to Date
+      let start = evt.startDate;
+      if (start?.toDate) start = start.toDate();
+      else if (start?.seconds != null) start = new Date(start.seconds * 1000);
+      else if (start?._seconds != null) start = new Date(start._seconds * 1000);
+      else if (typeof start === "string") start = new Date(start);
+
+      let end = evt.endDate;
+      if (end?.toDate) end = end.toDate();
+      else if (end?.seconds != null) end = new Date(end.seconds * 1000);
+      else if (end?._seconds != null) end = new Date(end._seconds * 1000);
+      else if (typeof end === "string") end = new Date(end);
+
+      // format date/time
+      const opts = { timeZone: "Asia/Singapore", dateStyle: "medium", timeStyle: "short" };
+      const formattedStart = start
+        ? start.toLocaleString("en-US", opts)
+        : "";
+      const formattedEnd = end ? end.toLocaleString("en-US", opts) : "";
+
+      // build with category
+      let builder = new EventBuilder()
+        .setId(evt.id)
+        .setTitle(evt.title)
+        .setDescription(evt.description)
+        .setFormat(evt.format)
+        .setCategory(evt.category || [])
+        .setStartDate(formattedStart)
+        .setEndDate(formattedEnd)
+        .setFeaturedImage(evt.featuredImage)
+        .setLocation(evt.location)
+        .setUrl(evt.inviteLink);
+
+      return builder.build();
+    });
+
+    setBuiltEvents(list);
+  }, [events]);
+
+  const [filteredEvents, setFilteredEvents] = useState([]);
+  useEffect(() => {
+    const filtered = builtEvents.filter((evt) => {
+      const matchesSearch =
+        !searchQuery ||
+        evt.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesFormat = !selectedFormat || evt.format === selectedFormat;
+      return matchesSearch && matchesFormat;
+    });
+    setFilteredEvents(filtered);
+  }, [builtEvents, searchQuery, selectedFormat]);
 
   if (loading) return <p className="text-center p-6">Loading...</p>;
-  if (error) return <p className="text-center text-red-500 p-6">{error}</p>;
+  if (error)
+    return <p className="text-center text-red-500 p-6">{error}</p>;
 
   return (
     <div className="container mx-auto p-8">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-3xl font-bold">My Events</h1>
+        <EventsFilter
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          selectedFormat={selectedFormat}
+          onFormatChange={setSelectedFormat}
+        />
         <button
           onClick={() => setIsModalOpen(true)}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
@@ -149,34 +105,13 @@ function MyEvents() {
           Create Event
         </button>
       </div>
-      {!myEvents.length ? (
-        <p className="text-center p-6">No events found</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {myEvents.map((event) => (
-            <div key={event.id} className="border border-gray-200 rounded p-2">
-              <Link to={`/events/${event.id}`}>
-                <FirebaseImage
-                  path={event.featuredImage || DEFAULT_IMAGE}
-                  alt={event.title}
-                  className="w-full h-48 object-cover rounded mb-2"
-                />
-                <h2 className="font-bold text-lg">{event.title}</h2>
-                {event.startDate && event.startDate._seconds && (
-                  <p className="text-sm text-gray-500">
-                    Start Date:{" "}
-                    {new Date(event.startDate._seconds * 1000).toLocaleString("en-US", {
-                      timeZone: "Asia/Shanghai",
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
-                  </p>
-                )}
-              </Link>
-            </div>
-          ))}
-        </div>
-      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {filteredEvents.map((event) => (
+          <EventCard key={event.id} event={event} />
+        ))}
+      </div>
+
       <EventModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -184,7 +119,9 @@ function MyEvents() {
         formData={formData}
         onChange={handleChange}
         onFileChange={handleFileChange}
-        onSubmit={handleSubmit}
+        onSubmit={onSubmitEvent}
+        isSubmitting={isSubmitting}
+        submitError={submitError}
       />
     </div>
   );

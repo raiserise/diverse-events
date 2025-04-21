@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom"; // Import useNavigate for redirection
 import {
@@ -11,19 +11,26 @@ import { Google as GoogleIcon } from "@mui/icons-material";
 import { db } from "../../firebase";
 import { doc, setDoc } from "firebase/firestore";
 import compare from "secure-compare";
+import { useAuth } from "../../context/AuthProvider"; // Import the useAuth hook
 
 const Signup = () => {
   const auth = getAuth();
   const navigate = useNavigate(); // Initialize useNavigate
+  const { currentUser } = useAuth(); // Use the login function from AuthProvider
 
   const [authing, setAuthing] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [role, setRole] = useState("user"); // Default role
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState(""); // State for success message
+
+  useEffect(() => {
+    if (currentUser) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [currentUser, navigate]);
 
   const signUpWithGoogle = async () => {
     setAuthing(true);
@@ -34,7 +41,6 @@ const Signup = () => {
         uid: response.user.uid,
         email: response.user.email,
         name: response.user.displayName || "",
-        role, // Store the selected role
         createdAt: new Date().toISOString(),
       });
 
@@ -67,7 +73,6 @@ const Signup = () => {
         uid: response.user.uid,
         email: response.user.email,
         name: displayName,
-        role, // Store the selected role
         createdAt: new Date().toISOString(),
       });
 
@@ -125,29 +130,6 @@ const Signup = () => {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
-
-          {/* Role Selection Radio Buttons */}
-          <div className="w-full flex flex-col mb-4 text-white">
-            <label className="mb-2">Register as:</label>
-            <label>
-              <input
-                type="radio"
-                value="user"
-                checked={role === "user"}
-                onChange={(e) => setRole(e.target.value)}
-              />{" "}
-              User
-            </label>
-            <label>
-              <input
-                type="radio"
-                value="vendor"
-                checked={role === "vendor"}
-                onChange={(e) => setRole(e.target.value)}
-              />{" "}
-              Vendor
-            </label>
-          </div>
         </div>
 
         {error && <div className="text-red-500 mb-4">{error}</div>}

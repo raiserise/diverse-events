@@ -1,17 +1,12 @@
 const eventModel = require("../models/eventModel");
-const inviteModel = require("../models/inviteModel");
 const rsvpModel = require("../models/rsvpModel");
+const notificationModel = require("../models/notificationModel");
 
 const createEvent = async (req, res) => {
   try {
     const data = req.body;
     data.creatorId = req.user.user_id; // Assuming authenticated user
     const event = await eventModel.createEvent(data);
-
-    // Create invites if specified
-    if (data.invites && data.invites.length > 0) {
-      await inviteModel.createInvite(event.id, data.invites);
-    }
 
     res.status(201).json(event);
   } catch (error) {
@@ -40,28 +35,6 @@ const getAllEvents = async (req, res) => {
   }
 };
 
-const searchEvents = async (req, res) => {
-  try {
-    const filters = {
-      title: req.query.title,
-      category: req.query.category,
-      startDate: req.query.start,
-      endDate: req.query.end,
-      privacy: req.query.privacy,
-      includePrivate: req.query.includePrivate === "true",
-    };
-
-    const results = await eventModel.searchEvents(filters);
-
-    res.status(200).json({
-      count: results.length,
-      results,
-    });
-  } catch (error) {
-    res.status(500).json({error: error.message});
-  }
-};
-
 const updateEvent = async (req, res) => {
   try {
     const eventId = req.params.eventId;
@@ -85,17 +58,21 @@ const deleteEvent = async (req, res) => {
     const eventId = req.params.eventId;
     const event = await eventModel.getEventById(eventId);
 
-    // Check if the user is the creator or an organizer of the event
     if (event.creatorId !== req.user.user_id) {
       return res.status(403).json({error: "Only creator can delete"});
     }
 
-    // Call the deleteEvent function from the eventModel
+    // Notify users about event cancellation
+    await notificationModel.notifyEventCancellation(eventId, event.title);
+
+    // Delete related RSVPs first
+    await rsvpModel.deleteRSVPsByEventId(eventId);
+
+    // Then delete the event
     await eventModel.deleteEvent(eventId);
 
-    // Return a success message after deleting
     res.status(200).json({
-      message: "Event deleted successfully",
+      message: "Event and related RSVPs deleted successfully",
     });
   } catch (error) {
     res.status(500).json({error: error.message});
@@ -112,29 +89,17 @@ const getEventDetails = async (req, res) => {
   }
 };
 
-const getEventStats = async (req, res) => {
+// POST /events/batch
+const getEventsByIds = async (req, res) => {
   try {
-    const eventId = req.params.eventId;
+    const {ids} = req.body; // expect: { ids: ["event1", "event2"] }
 
-    // Verify the user is authorized to view stats
-    const event = await eventModel.getEventById(eventId);
-    if (!event.organizers.includes(req.user.user_id)) {
-      return res.status(403).json({error: "Not authorized"});
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({error: "ids must be a non-empty array"});
     }
 
-    // Fetch invites and RSVPs using their respective models
-    const invites = await inviteModel.getInvitesByEvent(eventId);
-    const rsvps = await rsvpModel.getRSVPsByEvent(eventId);
-
-    // Calculate stats
-    const stats = {
-      totalInvites: invites.length,
-      totalRSVPs: rsvps.length,
-      attendees: rsvpModel.countRSVPsByStatus(rsvps, "approved"),
-      declined: rsvpModel.countRSVPsByStatus(rsvps, "declined"),
-    };
-
-    res.status(200).json(stats);
+    const events = await eventModel.getEventsByIds(ids); // Add this in model
+    res.status(200).json({events});
   } catch (error) {
     res.status(500).json({error: error.message});
   }
@@ -143,10 +108,9 @@ const getEventStats = async (req, res) => {
 module.exports = {
   createEvent,
   getUserEvents,
-  searchEvents,
   updateEvent,
   deleteEvent,
   getEventDetails,
-  getEventStats,
   getAllEvents,
+  getEventsByIds,
 };

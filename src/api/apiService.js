@@ -62,12 +62,12 @@ export const getDataById = async (endPoint, id, requiresAuth = true) => {
   }
 };
 
-export const postData = async (endPoint, id, userData, requiresAuth = true) => {
+export const postData = async (endPoint, payload = {}, requiresAuth = true) => {
   try {
     const headers = await authHeaders(requiresAuth);
-    const response = await axios.put(
-      `${API_URL}${endPoint}/${id}`,
-      userData,
+    const response = await axios.post(
+      `${API_URL}${endPoint}`,
+      payload,
       headers
     );
     return response.data;
@@ -86,10 +86,28 @@ export const deleteData = async (endPoint, id, requiresAuth = true) => {
   }
 };
 
+export const putData = async (endPoint, userData, requiresAuth = true) => {
+  try {
+    const headers = await authHeaders(requiresAuth);
+    const response = await axios.put(
+      `${API_URL}${endPoint}`,
+      userData,
+      headers
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response ? error.response.data : error.message);
+  }
+};
+
 export const patchData = async (endPoint, userData, requiresAuth = true) => {
   try {
     const headers = await authHeaders(requiresAuth);
-    const response = await axios.patch(`${API_URL}${endPoint}`, userData, headers);
+    const response = await axios.patch(
+      `${API_URL}${endPoint}`,
+      userData,
+      headers
+    );
     return response.data;
   } catch (error) {
     throw new Error(error.response ? error.response.data : error.message);
