@@ -25,7 +25,7 @@ const DashboardPage = () => {
 
   useEffect(() => {
     const fetchEvents = async () => {
-      try {
+    try {
         const data = await getAllData("/events", true);
 
         // Sort events by date (most recent first)
@@ -78,7 +78,11 @@ const DashboardPage = () => {
     const eventDate = timestamp._seconds
       ? new Date(timestamp._seconds * 1000)
       : new Date(timestamp);
-    return eventDate.toLocaleDateString();
+    return eventDate.toLocaleDateString("en-GB", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
   };
 
   // Filter to get only upcoming events
