@@ -53,7 +53,10 @@ const Notifications = () => {
         "rsvp_cancelled",
       ];
 
-      if (rsvpTypes.includes(notification.type) && notification.relatedEventId) {
+      if (
+        rsvpTypes.includes(notification.type) &&
+        notification.relatedEventId
+      ) {
         navigate(`/rsvp`);
       } else if (notification.relatedEventId) {
         navigate(`/events/${notification.relatedEventId}`);
@@ -69,7 +72,9 @@ const Notifications = () => {
         case "unread":
           return !notification.read;
         case "invites":
-          return ["event_invite", "event_cancelled"].includes(notification.type);
+          return ["event_invite", "event_cancelled"].includes(
+            notification.type
+          );
         case "rsvp":
           return [
             "rsvp_received",
@@ -148,7 +153,8 @@ const Notifications = () => {
               </h4>
               <p className="text-gray-600">{notification.message}</p>
               <small className="text-gray-500 block mt-2">
-                📅 {date.toLocaleDateString()} 🕒 {date.toLocaleTimeString()}
+                📅 {date.toLocaleDateString("en-GB")} 🕒{" "}
+                {date.toLocaleTimeString()}
               </small>
             </div>
           );
