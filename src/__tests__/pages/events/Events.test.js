@@ -1,222 +1,82 @@
-// src/pages/Events.test.js
-import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
-import Events from "../../../pages/events/Events"; // adjust the import if needed
-import { MemoryRouter } from "react-router-dom";
+// src/pages/events/__tests__/Events.test.js
+import React from 'react';
+import { render, screen, waitFor, act } from '@testing-library/react';
+import Events from '../../../pages/events/Events';
+import * as apiService from '../../../api/apiService';
 
-// Mock the custom hook GetEventLogic
-jest.mock("../../../Logic/EventsLogic/GetEventLogic", () => jest.fn());
+// Mock the getAllData function
+jest.mock('../../../api/apiService', () => ({
+  getAllData: jest.fn(),
+}));
 
-jest.mock("../../../components/FirebaseImage", () => {
-  const FirebaseImageMock = ({ path, alt, className }) => (
-    <img
-      src={path}
-      alt={alt}
-      className={className}
-      data-testid="firebase-image"
-    />
-  );
-  FirebaseImageMock.displayName = "FirebaseImageMock";
-  return FirebaseImageMock;
-});
+// Mock child components
+jest.mock('../../../components/EventCard', () => ({ event }) => (
+  <div data-testid="event-card">{event.title}</div>
+));
 
-// Import the mocked hook so we can set its return values:
-import GetEventLogic from "../../../Logic/EventsLogic/GetEventLogic";
+jest.mock('../../../components/EventsFilter', () => ({ onSearchChange, onFormatChange }) => (
+  <div>
+    <button onClick={() => onSearchChange('sample')}>Search Sample</button>
+    <button onClick={() => onFormatChange('Online')}>Filter Online</button>
+  </div>
+));
 
-describe("Events Component", () => {
-  beforeEach(() => {
-    // Clear mock data between tests.
-    GetEventLogic.mockClear();
-  });
+describe('Events component', () => {
+  it('renders events after successful fetch', async () => {
+    // Mock successful fetch
+    apiService.getAllData.mockResolvedValueOnce([
+      { id: '1', title: 'Sample Event', format: 'Online' },
+      { id: '2', title: 'Another Event', format: 'Offline' },
+    ]);
 
-  test("renders loading message when loading is true", () => {
-    // Arrange: Mock hook to return loading
-    GetEventLogic.mockReturnValue({
-      loading: true,
-      error: null,
-      events: [],
+    render(<Events />);
+
+    // Initially shows loading
+    expect(screen.getByText(/Loading events/i)).toBeInTheDocument();
+
+    // Wait for events to render
+    await waitFor(() => {
+      expect(screen.getAllByTestId('event-card')).toHaveLength(2);
     });
 
-    // Act: Render the component wrapped in MemoryRouter
-    render(
-      <MemoryRouter>
-        <Events />
-      </MemoryRouter>
-    );
-
-    // Assert: The loading message is displayed.
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
-  });
-
-  test("renders error message when error is returned", () => {
-    const errorMessage = "Failed to load events";
-    GetEventLogic.mockReturnValue({
-      loading: false,
-      error: errorMessage,
-      events: [],
-    });
-
-    render(
-      <MemoryRouter>
-        <Events />
-      </MemoryRouter>
-    );
-
-    // The error text should be displayed by the EventGrid.
-    expect(screen.getByText(errorMessage)).toBeInTheDocument();
-  });
-
-  test("renders events when events are loaded", () => {
-    const eventsData = [
-      {
-        id: "1",
-        title: "Event One",
-        format: "Online",
-        featuredImage: "image1.jpg",
-      },
-      {
-        id: "2",
-        title: "Event Two",
-        format: "Physical",
-        featuredImage: "image2.jpg",
-      },
-      {
-        id: "3",
-        title: "Another Event",
-        format: "Hybrid",
-        featuredImage: "image3.jpg",
-      },
-    ];
-    GetEventLogic.mockReturnValue({
-      loading: false,
-      error: null,
-      events: eventsData,
-    });
-
-    render(
-      <MemoryRouter>
-        <Events />
-      </MemoryRouter>
-    );
-
-    // Check that each event title is rendered via the EventCard (wrapped in a Link)
-    expect(screen.getByText(/Event One/i)).toBeInTheDocument();
-    expect(screen.getByText(/Event Two/i)).toBeInTheDocument();
+    // Should render event titles
+    expect(screen.getByText(/Sample Event/i)).toBeInTheDocument();
     expect(screen.getByText(/Another Event/i)).toBeInTheDocument();
   });
 
-  test("filters events by title based on search query", () => {
-    const eventsData = [
-      {
-        id: "1",
-        title: "React Conference",
-        format: "Online",
-        featuredImage: "image1.jpg",
-      },
-      {
-        id: "2",
-        title: "Vue Conference",
-        format: "Physical",
-        featuredImage: "image2.jpg",
-      },
-    ];
-    GetEventLogic.mockReturnValue({
-      loading: false,
-      error: null,
-      events: eventsData,
+  it('displays error message on fetch failure', async () => {
+    apiService.getAllData.mockRejectedValueOnce(new Error('Network error'));
+
+    render(<Events />);
+
+    expect(screen.getByText(/Loading events/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Network error/i)).toBeInTheDocument();
     });
-
-    render(
-      <MemoryRouter>
-        <Events />
-      </MemoryRouter>
-    );
-
-    // Initially, both events should be visible.
-    expect(screen.getByText(/React Conference/i)).toBeInTheDocument();
-    expect(screen.getByText(/Vue Conference/i)).toBeInTheDocument();
-
-    // Find the search input (by its placeholder text) and type "React"
-    const searchInput = screen.getByPlaceholderText(/search by title/i);
-    fireEvent.change(searchInput, { target: { value: "React" } });
-
-    // After filtering, only "React Conference" should be visible.
-    expect(screen.getByText(/React Conference/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Vue Conference/i)).not.toBeInTheDocument();
   });
 
-  test("filters events by format using select dropdown", () => {
-    const eventsData = [
-      {
-        id: "1",
-        title: "Event One",
-        format: "Online",
-        featuredImage: "image1.jpg",
-      },
-      {
-        id: "2",
-        title: "Event Two",
-        format: "Physical",
-        featuredImage: "image2.jpg",
-      },
-    ];
-    GetEventLogic.mockReturnValue({
-      loading: false,
-      error: null,
-      events: eventsData,
+  it('filters events based on format and search query', async () => {
+    apiService.getAllData.mockResolvedValueOnce([
+      { id: '1', title: 'Sample Event', format: 'Online' },
+      { id: '2', title: 'Offline Meetup', format: 'Offline' },
+    ]);
+  
+    render(<Events />);
+  
+    await waitFor(() => {
+      expect(screen.getAllByTestId('event-card')).toHaveLength(2);
     });
-
-    render(
-      <MemoryRouter>
-        <Events />
-      </MemoryRouter>
-    );
-
-    // Both events are visible initially
-    expect(screen.getByText(/Event One/i)).toBeInTheDocument();
-    expect(screen.getByText(/Event Two/i)).toBeInTheDocument();
-
-    // Get the select element by its role and change value to "Online"
-    const selectElement = screen.getByRole("combobox");
-    fireEvent.change(selectElement, { target: { value: "Online" } });
-
-    // Now, only the event with format "Online" should be visible.
-    expect(screen.getByText(/Event One/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Event Two/i)).not.toBeInTheDocument();
-  });
-
-  test("displays 'No events found' when search/filter yields no results", () => {
-    const eventsData = [
-      {
-        id: "1",
-        title: "React Conference",
-        format: "Online",
-        featuredImage: "image1.jpg",
-      },
-      {
-        id: "2",
-        title: "Vue Conference",
-        format: "Physical",
-        featuredImage: "image2.jpg",
-      },
-    ];
-    GetEventLogic.mockReturnValue({
-      loading: false,
-      error: null,
-      events: eventsData,
+  
+    await act(async () => {
+      screen.getByText('Search Sample').click();
+      screen.getByText('Filter Online').click();
     });
-
-    render(
-      <MemoryRouter>
-        <Events />
-      </MemoryRouter>
-    );
-
-    // Enter a search query that does not match any event.
-    const searchInput = screen.getByPlaceholderText(/search by title/i);
-    fireEvent.change(searchInput, { target: { value: "Angular" } });
-
-    // Expect "No events found" message to appear.
-    expect(screen.getByText(/No events found/i)).toBeInTheDocument();
+  
+    await waitFor(() => {
+      const cards = screen.getAllByTestId('event-card');
+      expect(cards).toHaveLength(1);
+      expect(cards[0]).toHaveTextContent('Sample Event');
+    });
   });
 });
