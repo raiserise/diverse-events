@@ -2,7 +2,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-// 1. MOCK react-modal BEFORE importing CustomModal
+// MOCK react-modal BEFORE importing CustomModal
 jest.mock('react-modal', () => {
   const React = require('react');
   // stub Modal: only render children when isOpen, and call onRequestClose on Escape
@@ -17,7 +17,7 @@ jest.mock('react-modal', () => {
   return Modal;
 });
 
-// 2. Now import the component under test
+// Now import the component under test
 import CustomModal from '../../components/CustomModal';
 
 describe('CustomModal', () => {
@@ -37,7 +37,7 @@ describe('CustomModal', () => {
       </CustomModal>
     );
     expect(screen.getByText('Visible Content')).toBeInTheDocument();
-    // also ensure our stub modal wrapper is in the DOM
+    // ensure stub modal wrapper is in the DOM
     expect(screen.getByTestId('modal')).toBeInTheDocument();
   });
 
