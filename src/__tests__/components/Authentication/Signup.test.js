@@ -1,5 +1,4 @@
 // npm test -- src/__tests__/components/Authentication/Signup.test.js
-// src/__tests__/components/Authentication/Signup.test.js
 import React from 'react';
 import {
   render,
@@ -11,13 +10,13 @@ import Signup from '../../../pages/signup/Signup';
 import { useAuth } from '../../../context/AuthProvider';
 import { MemoryRouter } from 'react-router-dom';
 
-// --- 1) stub out your own firebase.js BEFORE anything else imports it ---
+//  stub out firebase.js BEFORE anything else imports it
 jest.mock('../../../firebase', () => ({
   // we only need `db` for setDoc(...)
   db: {},
 }));
 
-// --- 2) mock react-router hooks & components ---
+// mock react-router hooks & components
 jest.mock('react-router-dom', () => {
   const actual = jest.requireActual('react-router-dom');
   return {
@@ -27,10 +26,10 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-// --- 3) mock your AuthProvider hook ---
+// ---  mock your AuthProvider hook ---
 jest.mock('../../../context/AuthProvider');
 
-// --- 4) mock firebase/auth & firebase/firestore APIs ---
+// ---  mock firebase/auth & firebase/firestore APIs ---
 jest.mock('firebase/auth', () => ({
   getAuth: jest.fn(),
   GoogleAuthProvider: jest.fn(),
@@ -42,7 +41,7 @@ jest.mock('firebase/firestore', () => ({
   setDoc: jest.fn(),
 }));
 
-// --- 5) mock secure-compare and toastify so no real comparisons/toasts happen ---
+// ---  mock secure-compare and toastify so no real comparisons/toasts happen ---
 jest.mock('secure-compare', () => jest.fn());
 jest.mock('react-toastify', () => ({
   toast: { success: jest.fn() },
