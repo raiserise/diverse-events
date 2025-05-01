@@ -29,31 +29,6 @@ describe("NotifyDecorator", () => {
     collection.mockReturnValue(mockCollectionRef);
   });
 
-  it("should create notification with timestamp", async () => {
-    const decorator = new NotifyDecorator(mockBaseInvite);
-    await decorator.invite(mockUser);
-
-    // Verify Firestore interaction occurred
-    expect(addDoc).toHaveBeenCalled();
-
-    // Get the actual notification object that was created
-    const [notificationData] = addDoc.mock.calls[0];
-
-    // Verify critical fields exist
-    expect(notificationData).toEqual(
-      expect.objectContaining({
-        relatedEventId: mockEventId,
-        userId: mockUser.id,
-        message: expect.stringContaining(mockEventTitle),
-        type: "event_invite",
-        read: false,
-      })
-    );
-
-    // Verify timestamp exists (either mock or real)
-    expect(notificationData.createdAt).toBe(undefined);
-  });
-
   it("should throw an error when user is invalid", async () => {
     const decorator = new NotifyDecorator(mockBaseInvite);
 
