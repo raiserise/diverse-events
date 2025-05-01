@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { getStorage, ref, getDownloadURL } from "firebase/storage";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 function FirebaseImage({ path, alt = "Image", className = "" }) {
   const [url, setUrl] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
     if (!path) return;
@@ -20,9 +23,29 @@ function FirebaseImage({ path, alt = "Image", className = "" }) {
   }, [path]);
 
   if (errorMsg) return <p className="text-red-500">{errorMsg}</p>;
-  if (!url) return <p className="text-gray-500">Loading image...</p>;
 
-  return <img src={url} alt={alt} className={className} />;
+  return (
+    <div className="relative w-full h-full">
+      {!imageLoaded && (
+        <div className="absolute inset-0">
+           <Skeleton 
+            className="w-full h-full" 
+            baseColor="#e0e0e0"
+            highlightColor="#f5f5f5"
+            duration={1.5}
+          />
+        </div>
+      )}
+      {url && (
+        <img
+          src={url}
+          alt={alt}
+          className={`${className} ${!imageLoaded ? "opacity-0" : "opacity-100"} transition-opacity`}
+          onLoad={() => setImageLoaded(true)}
+        />
+      )}
+    </div>
+  );
 }
 
 export default FirebaseImage;

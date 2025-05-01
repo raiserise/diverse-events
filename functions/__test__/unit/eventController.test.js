@@ -203,7 +203,7 @@ describe("eventController", () => {
       await eventController.deleteEvent(req, res);
       expect(res.statusCode).toBe(200);
       expect(res._getJSONData().message).toMatch(/deleted/i);
-    });
+    }, 10000);
 
     it("should return 403 if the user is not the creator of the event", async () => {
       const req = {

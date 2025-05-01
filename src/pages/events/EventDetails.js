@@ -437,14 +437,18 @@ function EventDetails() {
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white shadow-lg rounded-lg relative">
       {event.featuredImage ? (
-        <FirebaseImage
-          path={event.featuredImage}
-          alt={event.title}
-          className="w-full h-64 object-cover rounded-lg mb-4"
-        />
-      ) : (
-        <p className="text-gray-500">No image available</p>
-      )}
+  <div className="relative w-full mb-6">
+    <FirebaseImage
+      path={event.featuredImage}
+      alt={event.title}
+      className="w-full object-contain max-h-[400px] rounded-lg shadow-md" 
+    />
+  </div>
+) : (
+  <div className="bg-gray-100 h-32 flex items-center justify-center rounded-lg mb-6">
+    <p className="text-gray-500">No image available</p>
+  </div>
+)}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">{event.title}</h1>
         <div className="flex items-center space-x-4">
