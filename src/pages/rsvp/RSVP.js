@@ -317,6 +317,7 @@ const MyRSVPList = ({ rsvps, onCancel }) => {
             No, Keep RSVP
           </button>
           <button
+            data-testid="cancel-button"
             className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
             onClick={handleConfirmCancel}
           >

@@ -23,9 +23,9 @@ class PendingState extends BaseState {
     const eventTitle = eventData?.title || "your event";
 
     // Determine message for user
-    const userMessage = rsvpData.reapplied
-      ? "Thank you for reapplying! Your RSVP is now pending approval."
-      : "Your RSVP has been received and is now pending approval.";
+    const userMessage = rsvpData.reapplied ?
+      "Thank you for reapplying! Your RSVP is now pending approval." :
+      "Your RSVP has been received and is now pending approval.";
 
     // Clear 'reapplied' flag if present
     if (rsvpData.reapplied) {
@@ -79,14 +79,14 @@ class PendingState extends BaseState {
 
     // Notify user
     await this.sendUserNotification(
-      "rsvp_approved",
-      `You're confirmed! Your RSVP for "${eventTitle}" has been approved.`
+        "rsvp_approved",
+        `You're confirmed! Your RSVP for "${eventTitle}" has been approved.`,
     );
 
     // Notify organizer
     await this.sendOrganizerNotification(
-      "rsvp_received",
-      `${userName} has been approved to attend "${eventTitle}".`
+        "rsvp_received",
+        `${userName} has been approved to attend "${eventTitle}".`,
     );
 
     // Transition to ApprovedState
@@ -101,8 +101,8 @@ class PendingState extends BaseState {
     });
 
     await this.sendUserNotification(
-      "rsvp_rejected",
-      "Your RSVP for the event has been rejected."
+        "rsvp_rejected",
+        "Your RSVP for the event has been rejected.",
     );
 
     const RejectedState = require("./RejectedState");
@@ -110,9 +110,9 @@ class PendingState extends BaseState {
   }
 
   async cancel() {
-    const { db } = this;
+    const {db} = this;
     // eslint-disable-next-line no-unused-vars
-    const { eventId, userId, id: rsvpId } = this.rsvp;
+    const {eventId, userId, id: rsvpId} = this.rsvp;
     const rsvpRef = db.collection("rsvps").doc(rsvpId);
     const eventRef = db.collection("events").doc(eventId);
 
@@ -134,8 +134,8 @@ class PendingState extends BaseState {
     });
 
     await this.sendUserNotification(
-      "rsvp_cancelled",
-      "Your pending RSVP has been cancelled"
+        "rsvp_cancelled",
+        "Your pending RSVP has been cancelled",
     );
 
     const CancelledState = require("./CancelledState");

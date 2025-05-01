@@ -25,7 +25,7 @@ const DashboardPage = () => {
 
   useEffect(() => {
     const fetchEvents = async () => {
-    try {
+      try {
         const data = await getAllData("/events", true);
 
         // Sort events by date (most recent first)
@@ -193,7 +193,10 @@ const DashboardPage = () => {
               </div>
 
               {loading ? (
-                <div className="flex justify-center items-center p-12">
+                <div
+                  role="status"
+                  className="flex justify-center items-center p-12"
+                >
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
                 </div>
               ) : error ? (
@@ -226,7 +229,10 @@ const DashboardPage = () => {
                               {formatEventDate(event.startDate)}
                             </span>
                           </div>
-                          <p className="mt-2 text-gray-500 line-clamp-2">
+                          <p
+                            data-testid="no-events-message"
+                            className="mt-2 text-gray-500 line-clamp-2"
+                          >
                             {event.description || "No description available"}
                           </p>
                           <div className="mt-3 flex flex-wrap justify-between items-center gap-2">
