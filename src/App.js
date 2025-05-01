@@ -32,7 +32,6 @@ const App = () => {
       title: "Notifications",
       element: <Notifications />,
     },
-    { path: "/users", title: "User Management", element: <Users /> },
   ];
 
   return (
