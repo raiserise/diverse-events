@@ -15,7 +15,6 @@ import Profile from "./pages/profile/Profile";
 import Login from "./pages/login/Login";
 import Signup from "./pages/signup/Signup";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Users from "./pages/users/Users";
 
 import "react-toastify/dist/ReactToastify.css"; // Toastify CSS
 import CustomToast from "./components/CustomToast"; // Custom Toast Component
