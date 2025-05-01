@@ -1,12 +1,12 @@
 // Import RSVP and state classes
-const { createRSVP, deleteRSVPsByEventId } = require("../../models/rsvpModel");
+const {createRSVP, deleteRSVPsByEventId} = require("../../models/rsvpModel");
 const {
   PendingState,
   ApprovedState,
   RejectedState,
   CancelledState,
 } = require("../../states");
-const { db } = require("../../config/firebase");
+const {db} = require("../../config/firebase");
 const RSVP = require("../../models/rsvpModel");
 const notificationModel = require("../../models/notificationModel");
 const BaseState = require("../../states/BaseState");
@@ -46,8 +46,8 @@ jest.mock("firebase-admin", () => {
       get: jest.fn().mockResolvedValue({
         empty: false,
         forEach: jest.fn((callback) => {
-          callback({ ref: "doc1" });
-          callback({ ref: "doc2" });
+          callback({ref: "doc1"});
+          callback({ref: "doc2"});
         }),
       }),
     })),
@@ -96,13 +96,13 @@ describe("RSVP and State Pattern", () => {
     test("should create a new RSVP in PendingState", async () => {
       const eventId = "event1";
       const userId = "user1";
-      const data = { organizers: ["organizer1"] };
+      const data = {organizers: ["organizer1"]};
 
       // Simulate Firestore operations for event lookup
       const fakeEventDoc = {
         exists: true,
         id: "event1",
-        data: () => ({ maxParticipants: 100, participants: [] }),
+        data: () => ({maxParticipants: 100, participants: []}),
       };
       const docMock = jest.fn((eventId) => ({
         get: jest.fn().mockResolvedValue(fakeEventDoc),
@@ -117,12 +117,12 @@ describe("RSVP and State Pattern", () => {
       const duplicateQueryMock = {
         where: jest.fn().mockReturnThis(),
         limit: jest.fn().mockReturnThis(),
-        get: jest.fn().mockResolvedValue({ empty: true, docs: [] }), // no duplicates
+        get: jest.fn().mockResolvedValue({empty: true, docs: []}), // no duplicates
         doc: jest.fn(() => fakeDocRef), // <-- Add this to fix the error
       };
       db.collection.mockImplementation((coll) => {
         if (coll === "events") {
-          return { doc: docMock };
+          return {doc: docMock};
         }
         if (coll === "rsvps") {
           return duplicateQueryMock; // Now includes .doc()
@@ -146,13 +146,13 @@ describe("RSVP and State Pattern", () => {
       const eventId = "event1";
       const userId = "user1";
       const rsvpId = "existingRsvp123";
-      const data = { organizers: ["organizer1"] };
+      const data = {organizers: ["organizer1"]};
 
       // Mock event document retrieval
       const fakeEventDoc = {
         exists: true,
         id: eventId,
-        data: () => ({ maxParticipants: 100, participants: [] }),
+        data: () => ({maxParticipants: 100, participants: []}),
       };
 
       const eventDocMock = jest.fn(() => ({
@@ -179,7 +179,7 @@ describe("RSVP and State Pattern", () => {
                 eventId,
                 userId,
                 status: "approved",
-                createdAt: { toDate: () => new Date(Date.now() - 100000) }, // simulate old RSVP
+                createdAt: {toDate: () => new Date(Date.now() - 100000)}, // simulate old RSVP
               }),
             },
           ],
@@ -190,7 +190,7 @@ describe("RSVP and State Pattern", () => {
       db.collection.mockImplementation((collection) => {
         console.log(`Accessing collection: ${collection}`);
         if (collection === "events") {
-          return { doc: eventDocMock };
+          return {doc: eventDocMock};
         }
         if (collection === "rsvps") {
           return rsvpsCollectionMock;
@@ -200,7 +200,7 @@ describe("RSVP and State Pattern", () => {
 
       // Expect the createRSVP function to throw the correct error
       await expect(createRSVP(eventId, userId, data)).rejects.toThrow(
-        "You have already RSVP'd for this event."
+          "You have already RSVP'd for this event.",
       );
     });
 
@@ -208,13 +208,13 @@ describe("RSVP and State Pattern", () => {
       const eventId = "";
       const userId = "user1";
       const rsvpId = "existingRsvp123";
-      const data = { organizers: ["organizer1"] };
+      const data = {organizers: ["organizer1"]};
 
       // Mock event document retrieval
       const fakeEventDoc = {
         exists: false,
         id: eventId,
-        data: () => ({ maxParticipants: 100, participants: [] }),
+        data: () => ({maxParticipants: 100, participants: []}),
       };
 
       const eventDocMock = jest.fn(() => ({
@@ -241,7 +241,7 @@ describe("RSVP and State Pattern", () => {
                 eventId,
                 userId,
                 status: "approved",
-                createdAt: { toDate: () => new Date(Date.now() - 100000) }, // simulate old RSVP
+                createdAt: {toDate: () => new Date(Date.now() - 100000)}, // simulate old RSVP
               }),
             },
           ],
@@ -252,7 +252,7 @@ describe("RSVP and State Pattern", () => {
       db.collection.mockImplementation((collection) => {
         console.log(`Accessing collection: ${collection}`);
         if (collection === "events") {
-          return { doc: eventDocMock };
+          return {doc: eventDocMock};
         }
         if (collection === "rsvps") {
           return rsvpsCollectionMock;
@@ -262,7 +262,7 @@ describe("RSVP and State Pattern", () => {
 
       // Expect the createRSVP function to throw the correct error
       await expect(createRSVP(eventId, userId, data)).rejects.toThrow(
-        "Event not found."
+          "Event not found.",
       );
     });
 
@@ -270,14 +270,14 @@ describe("RSVP and State Pattern", () => {
       const eventId = "";
       const userId = "user1";
       const rsvpId = "existingRsvp123";
-      const data = { organizers: ["organizer1"] };
+      const data = {organizers: ["organizer1"]};
 
       // Mock event document retrieval
       const fakeEventDoc = {
         exists: true,
         id: eventId,
         status: "cancelled",
-        data: () => ({ maxParticipants: 100, participants: [] }),
+        data: () => ({maxParticipants: 100, participants: []}),
       };
 
       const eventDocMock = jest.fn(() => ({
@@ -304,7 +304,7 @@ describe("RSVP and State Pattern", () => {
                 eventId,
                 userId,
                 status: "approved",
-                createdAt: { toDate: () => new Date(Date.now() - 100000) }, // simulate old RSVP
+                createdAt: {toDate: () => new Date(Date.now() - 100000)}, // simulate old RSVP
               }),
             },
           ],
@@ -315,7 +315,7 @@ describe("RSVP and State Pattern", () => {
       db.collection.mockImplementation((collection) => {
         console.log(`Accessing collection: ${collection}`);
         if (collection === "events") {
-          return { doc: eventDocMock };
+          return {doc: eventDocMock};
         }
         if (collection === "rsvps") {
           return rsvpsCollectionMock;
@@ -325,7 +325,7 @@ describe("RSVP and State Pattern", () => {
 
       // Expect the createRSVP function to throw the correct error
       await expect(createRSVP(eventId, userId, data)).rejects.toThrow(
-        "You have already RSVP'd for this event."
+          "You have already RSVP'd for this event.",
       );
     });
 
@@ -333,13 +333,13 @@ describe("RSVP and State Pattern", () => {
       const eventId = "";
       const userId = "user1";
       const rsvpId = "existingRsvp123";
-      const data = { organizers: ["organizer1"] };
+      const data = {organizers: ["organizer1"]};
 
       // Mock event document retrieval
       const fakeEventDoc = {
         exists: true,
         id: eventId,
-        data: () => ({ maxParticipants: 1, participants: ["me"] }),
+        data: () => ({maxParticipants: 1, participants: ["me"]}),
       };
 
       const eventDocMock = jest.fn(() => ({
@@ -366,7 +366,7 @@ describe("RSVP and State Pattern", () => {
                 eventId,
                 userId,
                 status: "approved",
-                createdAt: { toDate: () => new Date(Date.now() - 100000) }, // simulate old RSVP
+                createdAt: {toDate: () => new Date(Date.now() - 100000)}, // simulate old RSVP
               }),
             },
           ],
@@ -377,7 +377,7 @@ describe("RSVP and State Pattern", () => {
       db.collection.mockImplementation((collection) => {
         console.log(`Accessing collection: ${collection}`);
         if (collection === "events") {
-          return { doc: eventDocMock };
+          return {doc: eventDocMock};
         }
         if (collection === "rsvps") {
           return rsvpsCollectionMock;
@@ -387,7 +387,7 @@ describe("RSVP and State Pattern", () => {
 
       // Expect the createRSVP function to throw the correct error
       await expect(createRSVP(eventId, userId, data)).rejects.toThrow(
-        "Event is full. RSVP not allowed."
+          "Event is full. RSVP not allowed.",
       );
     });
   });
@@ -499,7 +499,7 @@ describe("RSVP and State Pattern", () => {
       expect(rsvp.setState).toHaveBeenCalledWith(expect.any(CancelledState));
 
       await expect(approvedState.approve()).rejects.toThrow(
-        "Cannot approve an already approved RSVP."
+          "Cannot approve an already approved RSVP.",
       );
     });
 
@@ -578,7 +578,7 @@ describe("RSVP and State Pattern", () => {
 
       const cancelledState = new CancelledState(rsvp);
       await expect(cancelledState.reapply()).rejects.toThrow(
-        "You must wait 5 minutes before RSVPing again."
+          "You must wait 5 minutes before RSVPing again.",
       );
     });
 
@@ -593,7 +593,7 @@ describe("RSVP and State Pattern", () => {
 
       const cancelledState = new CancelledState(rsvp);
       await expect(cancelledState.approve()).rejects.toThrow(
-        "Cannot approve a cancelled RSVP."
+          "Cannot approve a cancelled RSVP.",
       );
     });
 
@@ -608,7 +608,7 @@ describe("RSVP and State Pattern", () => {
 
       const cancelledState = new CancelledState(rsvp);
       await expect(cancelledState.reject()).rejects.toThrow(
-        "Cannot reject a cancelled RSVP."
+          "Cannot reject a cancelled RSVP.",
       );
     });
 
@@ -623,7 +623,7 @@ describe("RSVP and State Pattern", () => {
 
       const cancelledState = new CancelledState(rsvp);
       await expect(cancelledState.cancel()).rejects.toThrow(
-        "RSVP is already cancelled."
+          "RSVP is already cancelled.",
       );
     });
   });
@@ -645,7 +645,7 @@ describe("RSVP and State Pattern", () => {
 
       const approvedState = new ApprovedState(rsvp);
       await expect(approvedState.reject()).rejects.toThrow(
-        "Cannot reject an already approved RSVP."
+          "Cannot reject an already approved RSVP.",
       );
     });
 
@@ -665,7 +665,7 @@ describe("RSVP and State Pattern", () => {
 
       const cancelledState = new CancelledState(rsvp);
       await expect(cancelledState.reapply()).rejects.toThrow(
-        "You must wait 5 minutes before RSVPing again."
+          "You must wait 5 minutes before RSVPing again.",
       );
     });
   });
@@ -676,8 +676,8 @@ describe("RSVP and State Pattern", () => {
       userId: "user1",
       organizers: ["organizer1"],
       status: "pending",
-      createdAt: { toMillis: () => 123456789 },
-      lastCancelledAt: { toMillis: () => 123456000 },
+      createdAt: {toMillis: () => 123456789},
+      lastCancelledAt: {toMillis: () => 123456000},
     };
 
     beforeEach(() => jest.clearAllMocks());
@@ -705,7 +705,7 @@ describe("RSVP and State Pattern", () => {
             limit: () => ({
               get: jest.fn().mockResolvedValue({
                 empty: false,
-                docs: [{ id: "r1", data: () => mockData }],
+                docs: [{id: "r1", data: () => mockData}],
               }),
             }),
           }),
@@ -722,7 +722,7 @@ describe("RSVP and State Pattern", () => {
         where: () => ({
           where: () => ({
             get: jest.fn().mockResolvedValue({
-              docs: [{ id: "r1", data: () => mockData }],
+              docs: [{id: "r1", data: () => mockData}],
             }),
           }),
         }),
@@ -736,7 +736,7 @@ describe("RSVP and State Pattern", () => {
       db.collection.mockReturnValue({
         where: () => ({
           get: jest.fn().mockResolvedValue({
-            docs: [{ id: "r1", data: () => mockData }],
+            docs: [{id: "r1", data: () => mockData}],
           }),
         }),
       });
@@ -749,7 +749,7 @@ describe("RSVP and State Pattern", () => {
       db.collection.mockReturnValue({
         where: () => ({
           get: jest.fn().mockResolvedValue({
-            docs: [{ id: "r1", data: () => mockData }],
+            docs: [{id: "r1", data: () => mockData}],
           }),
         }),
       });
@@ -760,9 +760,9 @@ describe("RSVP and State Pattern", () => {
 
     test("countRSVPsByStatus - counts matching RSVPs", () => {
       const list = [
-        { status: "pending" },
-        { status: "approved" },
-        { status: "pending" },
+        {status: "pending"},
+        {status: "approved"},
+        {status: "pending"},
       ];
       expect(RSVP.countRSVPsByStatus(list, "pending")).toBe(2);
     });
@@ -811,7 +811,7 @@ describe("RSVP and State Pattern", () => {
       });
 
       await expect(
-        RSVP.updateRSVP("rsvp1", "organizer1", "cancelled")
+          RSVP.updateRSVP("rsvp1", "organizer1", "cancelled"),
       ).rejects.toThrow("Only the participant can cancel their RSVP.");
     });
 
@@ -822,14 +822,14 @@ describe("RSVP and State Pattern", () => {
       });
 
       await expect(
-        RSVP.updateRSVP("rsvp1", "user1", "archived")
+          RSVP.updateRSVP("rsvp1", "user1", "archived"),
       ).rejects.toThrow("Invalid status transition: archived");
     });
 
     test("getRSVPById - returns RSVP instance", async () => {
       const mockLoad = jest
-        .spyOn(RSVP, "load")
-        .mockResolvedValue(new RSVP("rsvp1", mockData));
+          .spyOn(RSVP, "load")
+          .mockResolvedValue(new RSVP("rsvp1", mockData));
 
       const result = await RSVP.getRSVPById("rsvp1");
       expect(mockLoad).toHaveBeenCalledWith("rsvp1");
@@ -841,31 +841,31 @@ describe("RSVP and State Pattern", () => {
         id: "r1",
         ...mockData,
         status: "approved",
-        createdAt: { toMillis: () => 100 },
-        lastCancelledAt: { toMillis: () => 500 },
+        createdAt: {toMillis: () => 100},
+        lastCancelledAt: {toMillis: () => 500},
       };
       const rsvp2 = {
         id: "r2",
         ...mockData,
         status: "approved",
-        createdAt: { toMillis: () => 200 },
-        lastCancelledAt: { toMillis: () => 400 },
+        createdAt: {toMillis: () => 200},
+        lastCancelledAt: {toMillis: () => 400},
       };
       const rsvp3 = {
         id: "r3",
         ...mockData,
         status: "pending",
-        createdAt: { toMillis: () => 300 },
-        lastCancelledAt: { toMillis: () => undefined },
+        createdAt: {toMillis: () => 300},
+        lastCancelledAt: {toMillis: () => undefined},
       };
 
       db.collection.mockReturnValue({
         where: () => ({
           get: jest.fn().mockResolvedValue({
             docs: [
-              { id: rsvp1.id, data: () => rsvp1 },
-              { id: rsvp2.id, data: () => rsvp2 },
-              { id: rsvp3.id, data: () => rsvp3 },
+              {id: rsvp1.id, data: () => rsvp1},
+              {id: rsvp2.id, data: () => rsvp2},
+              {id: rsvp3.id, data: () => rsvp3},
             ],
           }),
         }),
@@ -906,7 +906,7 @@ describe("RSVP and State Pattern", () => {
       const rejectedState = new RejectedState(rsvp);
 
       await expect(rejectedState.approve()).rejects.toThrow(
-        "Cannot approve a rejected RSVP."
+          "Cannot approve a rejected RSVP.",
       );
     });
 
@@ -922,7 +922,7 @@ describe("RSVP and State Pattern", () => {
       const rejectedState = new RejectedState(rsvp);
 
       await expect(rejectedState.reject()).rejects.toThrow(
-        "RSVP is already rejected."
+          "RSVP is already rejected.",
       );
     });
 
@@ -938,7 +938,7 @@ describe("RSVP and State Pattern", () => {
       const rejectedState = new RejectedState(rsvp);
 
       await expect(rejectedState.cancel()).rejects.toThrow(
-        "Cannot cancel a rejected RSVP."
+          "Cannot cancel a rejected RSVP.",
       );
     });
   });
@@ -977,13 +977,13 @@ describe("RSVP and State Pattern", () => {
       // Mock RSVP data
       dbMock.get.mockResolvedValueOnce({
         exists: true,
-        data: () => ({ reapplied: false }), // RSVP is not reapplied
+        data: () => ({reapplied: false}), // RSVP is not reapplied
       });
 
       // Mock event data
       dbMock.get.mockResolvedValueOnce({
         exists: true,
-        data: () => ({ title: "Test Event", creatorId: "organizer1" }),
+        data: () => ({title: "Test Event", creatorId: "organizer1"}),
       });
 
       // eslint-disable-next-line no-invalid-this
@@ -1005,7 +1005,7 @@ describe("RSVP and State Pattern", () => {
         userId: "organizer123",
         type: "rsvp_received",
         message:
-          'A user has requested to join your event \"Mock Event\" as a guest/participant',
+          "A user has requested to join your event \"Mock Event\" as a guest/participant",
         relatedEventId: "event1",
       });
     });
@@ -1017,7 +1017,7 @@ describe("RSVP and State Pattern", () => {
       dbMock.doc.mockReturnValueOnce({
         get: jest.fn().mockResolvedValue({
           exists: true,
-          data: () => ({ reapplied: true }),
+          data: () => ({reapplied: true}),
         }),
         update: updateMock,
       });
@@ -1026,7 +1026,7 @@ describe("RSVP and State Pattern", () => {
       dbMock.doc.mockReturnValueOnce({
         get: jest.fn().mockResolvedValue({
           exists: true,
-          data: () => ({ title: "Test Event", creatorId: "organizer1" }),
+          data: () => ({title: "Test Event", creatorId: "organizer1"}),
         }),
       });
 
@@ -1046,7 +1046,7 @@ describe("RSVP and State Pattern", () => {
         userId: "organizer123",
         type: "rsvp_received",
         message:
-          'A user has requested to join your event \"Mock Event\" as a guest/participant',
+          "A user has requested to join your event \"Mock Event\" as a guest/participant",
         relatedEventId: "event1",
       });
     });
@@ -1074,8 +1074,8 @@ describe("RSVP and State Pattern", () => {
           notificationModel.createNotification.mockResolvedValueOnce(true);
 
           await state.sendUserNotification(
-            "rsvp_pending",
-            "Your RSVP is pending"
+              "rsvp_pending",
+              "Your RSVP is pending",
           );
 
           expect(notificationModel.createNotification).toHaveBeenCalledWith({
@@ -1088,11 +1088,11 @@ describe("RSVP and State Pattern", () => {
 
         it("should throw error if sending user notification fails", async () => {
           notificationModel.createNotification.mockRejectedValueOnce(
-            new Error("Failed")
+              new Error("Failed"),
           );
 
           await expect(
-            state.sendUserNotification("rsvp_pending", "Failed test")
+              state.sendUserNotification("rsvp_pending", "Failed test"),
           ).rejects.toThrow("Failed to send user notification.");
 
           expect(notificationModel.createNotification).toHaveBeenCalled();
@@ -1104,19 +1104,19 @@ describe("RSVP and State Pattern", () => {
           // Mock eventDoc
           const mockEventDoc = {
             exists: true,
-            data: () => ({ creatorId: "organizer123" }),
+            data: () => ({creatorId: "organizer123"}),
           };
           const getMock = require("firebase-admin")
-            .firestore()
-            .collection()
-            .doc().get;
+              .firestore()
+              .collection()
+              .doc().get;
           getMock.mockResolvedValueOnce(mockEventDoc);
 
           notificationModel.createNotification.mockResolvedValueOnce(true);
 
           await state.sendOrganizerNotification(
-            "rsvp_received",
-            "User has RSVP'd"
+              "rsvp_received",
+              "User has RSVP'd",
           );
 
           expect(notificationModel.createNotification).toHaveBeenCalledWith({
@@ -1129,32 +1129,32 @@ describe("RSVP and State Pattern", () => {
 
         it("should throw error if event does not exist", async () => {
           const getMock = require("firebase-admin")
-            .firestore()
-            .collection()
-            .doc().get;
-          getMock.mockResolvedValueOnce({ exists: false });
+              .firestore()
+              .collection()
+              .doc().get;
+          getMock.mockResolvedValueOnce({exists: false});
 
           await expect(
-            state.sendOrganizerNotification("rsvp_received", "No event")
+              state.sendOrganizerNotification("rsvp_received", "No event"),
           ).rejects.toThrow("Failed to send organizer notification.");
         });
 
         it("should throw error if notification creation fails", async () => {
           const getMock = require("firebase-admin")
-            .firestore()
-            .collection()
-            .doc().get;
+              .firestore()
+              .collection()
+              .doc().get;
           getMock.mockResolvedValueOnce({
             exists: true,
-            data: () => ({ creatorId: "organizer123" }),
+            data: () => ({creatorId: "organizer123"}),
           });
 
           notificationModel.createNotification.mockRejectedValueOnce(
-            new Error("Oops")
+              new Error("Oops"),
           );
 
           await expect(
-            state.sendOrganizerNotification("rsvp_received", "Oops test")
+              state.sendOrganizerNotification("rsvp_received", "Oops test"),
           ).rejects.toThrow("Failed to send organizer notification.");
         });
       });
@@ -1187,15 +1187,15 @@ describe("RSVP and State Pattern", () => {
 
       // Ensure that `get` method resolves with a snapshot (e.g., with docs)
       dbMock
-        .collection()
-        .where()
-        .get.mockResolvedValue({
-          empty: false,
-          forEach: jest.fn((callback) => {
-            callback({ ref: "doc1" }); // Return a mock document reference
-            callback({ ref: "doc2" });
-          }),
-        });
+          .collection()
+          .where()
+          .get.mockResolvedValue({
+            empty: false,
+            forEach: jest.fn((callback) => {
+              callback({ref: "doc1"}); // Return a mock document reference
+              callback({ref: "doc2"});
+            }),
+          });
     });
 
     test("should delete all RSVPs for the given eventId", async () => {
@@ -1205,9 +1205,9 @@ describe("RSVP and State Pattern", () => {
       // Verify that the Firestore query was executed
       expect(dbMock.collection).toHaveBeenCalledWith("rsvps");
       expect(dbMock.collection().where).toHaveBeenCalledWith(
-        "eventId",
-        "==",
-        "event1"
+          "eventId",
+          "==",
+          "event1",
       );
       expect(dbMock.collection().where().get).toHaveBeenCalled();
 
@@ -1238,13 +1238,13 @@ describe("RSVP and State Pattern", () => {
     test("should handle errors during Firestore query", async () => {
       // Mock Firestore query to throw an error
       dbMock
-        .collection()
-        .where()
-        .get.mockRejectedValue(new Error("Firestore error"));
+          .collection()
+          .where()
+          .get.mockRejectedValue(new Error("Firestore error"));
 
       // Call the method under test and expect it to throw an error
       await expect(deleteRSVPsByEventId("event1")).rejects.toThrow(
-        "Firestore error"
+          "Firestore error",
       );
 
       // Verify that no batch operations were performed
@@ -1256,7 +1256,7 @@ describe("RSVP and State Pattern", () => {
       const mockSnapshot = {
         empty: false,
         forEach: jest.fn((callback) => {
-          callback({ ref: "doc1" });
+          callback({ref: "doc1"});
         }),
       };
 
@@ -1267,7 +1267,7 @@ describe("RSVP and State Pattern", () => {
 
       // Call the method under test and expect it to throw an error
       await expect(deleteRSVPsByEventId("event1")).rejects.toThrow(
-        "Batch commit error"
+          "Batch commit error",
       );
 
       // Verify that the batch.delete method was called

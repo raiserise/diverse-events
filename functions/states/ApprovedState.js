@@ -32,13 +32,13 @@ class ApprovedState extends BaseState {
 
     // Notify user
     await this.sendUserNotification(
-      "rsvp_cancelled",
-      "You've successfully cancelled your RSVP for the event."
+        "rsvp_cancelled",
+        "You've successfully cancelled your RSVP for the event.",
     );
 
     await this.sendOrganizerNotification(
-      "rsvp_received",
-      `${userName} has cancelled their RSVP for "${eventTitle}".`
+        "rsvp_received",
+        `${userName} has cancelled their RSVP for "${eventTitle}".`,
     );
 
     // Transition to CancelledState

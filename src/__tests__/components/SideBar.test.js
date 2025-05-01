@@ -1,11 +1,11 @@
 // npm test -- src/__tests__/components/SideBar.test.js
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { act } from 'react';
-import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getDoc } from 'firebase/firestore';
-// Mock firebase/auth 
-jest.mock('firebase/auth', () => ({
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import { act } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { getDoc } from "firebase/firestore";
+// Mock firebase/auth
+jest.mock("firebase/auth", () => ({
   __esModule: true,
   getAuth: jest.fn(),
   onAuthStateChanged: jest.fn(),
@@ -14,7 +14,7 @@ jest.mock('firebase/auth', () => ({
 }));
 
 // Mock firebase/firestore
-jest.mock('firebase/firestore', () => ({
+jest.mock("firebase/firestore", () => ({
   __esModule: true,
   getFirestore: jest.fn(),
   doc: jest.fn(),
@@ -23,8 +23,8 @@ jest.mock('firebase/firestore', () => ({
 
 // Mock react-router-dom
 const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => {
-  const real = jest.requireActual('react-router-dom');
+jest.mock("react-router-dom", () => {
+  const real = jest.requireActual("react-router-dom");
   return {
     __esModule: true,
     ...real,
@@ -34,34 +34,35 @@ jest.mock('react-router-dom', () => {
   };
 });
 
+import SideBar from "../../components/SideBar";
 
-import SideBar from '../../components/SideBar';
-
-describe('<SideBar />', () => {
+describe("<SideBar />", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
   });
 
-  it('handles the profileUpdated window event', async () => {
-    const fakeUser = { uid: 'u3', displayName: '', email: 'e3@e.com' };
+  it("handles the profileUpdated window event", async () => {
+    const fakeUser = { uid: "u3", displayName: "", email: "e3@e.com" };
     onAuthStateChanged.mockImplementation((_, cb) => {
       cb(fakeUser);
       return () => {};
     });
     getDoc.mockResolvedValue({ exists: () => false });
-    require('react-router-dom').useLocation.mockReturnValue({ pathname: '/dashboard' });
+    require("react-router-dom").useLocation.mockReturnValue({
+      pathname: "/dashboard",
+    });
 
     render(<SideBar />);
     // wait for fallback email
-    await screen.findByText('e3@e.com');
+    await screen.findByText("e3@e.com");
 
     act(() => {
       window.dispatchEvent(
-        new CustomEvent('profileUpdated', { detail: { displayName: 'Bob' } })
+        new CustomEvent("profileUpdated", { detail: { displayName: "Bob" } })
       );
     });
 
-    expect(screen.getByText('Bob')).toBeInTheDocument();
+    expect(screen.getByText("Bob")).toBeInTheDocument();
   });
 });
