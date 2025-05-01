@@ -68,25 +68,25 @@ const Profile = () => {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    const auth = getAuth();
-    const confirmed = window.confirm(
-      "Are you sure you want to delete your account? This action cannot be undone."
-    );
-    if (!confirmed) {
-      return;
-    }
+  // const handleDeleteAccount = async () => {
+  //   const auth = getAuth();
+  //   const confirmed = window.confirm(
+  //     "Are you sure you want to delete your account? This action cannot be undone."
+  //   );
+  //   if (!confirmed) {
+  //     return;
+  //   }
 
-    try {
-      await auth.currentUser.delete();
-      toast.success("Account deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting account: ", error);
-      toast.error(
-        "Failed to delete account. You may need to re-authenticate first."
-      );
-    }
-  };
+  //   try {
+  //     await auth.currentUser.delete();
+  //     toast.success("Account deleted successfully!");
+  //   } catch (error) {
+  //     console.error("Error deleting account: ", error);
+  //     toast.error(
+  //       "Failed to delete account. You may need to re-authenticate first."
+  //     );
+  //   }
+  // };
 
   if (loading) {
     return (
@@ -237,7 +237,7 @@ const Profile = () => {
 
                 <div className="flex-grow"></div>
 
-                <div className="pt-4 border-t border-gray-100 mt-auto">
+                {/* <div className="pt-4 border-t border-gray-100 mt-auto">
                   <button
                     onClick={handleDeleteAccount}
                     className="bg-red-600 text-white w-full px-6 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
@@ -260,7 +260,7 @@ const Profile = () => {
                   <p className="mt-2 text-xs text-center text-gray-500">
                     This action cannot be undone.
                   </p>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
