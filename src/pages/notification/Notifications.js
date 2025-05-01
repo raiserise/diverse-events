@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllData, patchData } from "../../api/apiService";
+import { patchData } from "../../api/apiService";
+import notificationService from "../../services/NotificationService";
+import { useAuth } from "../../context/AuthProvider";
 
 const typeIcons = {
   event_invite: "📩",
   rsvp_received: "📬",
-  rsvp_confirmation: "✅",
+  rsvp_pending: "⏳",
+  rsvp_approved: "✅",
+  rsvp_cancelled: "❌",
+  rsvp_rejected: "🚫",
   default: "🔔",
 };
 
@@ -14,21 +19,24 @@ const Notifications = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const navigate = useNavigate();
-
-  const fetchNotifications = async () => {
-    try {
-      const data = await getAllData("/notifications");
-      setNotifications(data);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { user } = useAuth();
 
   useEffect(() => {
-    fetchNotifications();
-  }, []);
+    if (!user) return;
+
+    const handleDataChange = (data) => {
+      setNotifications(data);
+      setLoading(false);
+    };
+
+    notificationService.subscribe(handleDataChange);
+    notificationService.startListening(user.uid);
+
+    return () => {
+      notificationService.unsubscribeObserver(handleDataChange);
+      notificationService.stopListening();
+    };
+  }, [user]);
 
   const handleNotificationClick = async (notification) => {
     try {
@@ -37,7 +45,14 @@ const Notifications = () => {
         prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
       );
 
-      const rsvpTypes = ["rsvp_received", "rsvp_confirmation", "rsvp_update"];
+      const rsvpTypes = [
+        "rsvp_received",
+        "rsvp_pending",
+        "rsvp_approved",
+        "rsvp_rejected",
+        "rsvp_cancelled",
+      ];
+
       if (
         rsvpTypes.includes(notification.type) &&
         notification.relatedEventId
@@ -51,20 +66,38 @@ const Notifications = () => {
     }
   };
 
-  const filteredNotifications = notifications.filter((notification) => {
-    switch (activeTab) {
-      case "unread":
-        return !notification.read;
-      case "invites":
-        return notification.type === "event_invite";
-      case "rsvp":
-        return ["rsvp_received", "rsvp_confirmation", "rsvp_update"].includes(
-          notification.type
-        );
-      default:
-        return true;
-    }
-  });
+  const filteredNotifications = notifications
+    .filter((notification) => {
+      switch (activeTab) {
+        case "unread":
+          return !notification.read;
+        case "invites":
+          return ["event_invite", "event_cancelled"].includes(
+            notification.type
+          );
+        case "rsvp":
+          return [
+            "rsvp_received",
+            "rsvp_pending",
+            "rsvp_approved",
+            "rsvp_rejected",
+            "rsvp_cancelled",
+          ].includes(notification.type);
+        default:
+          return true;
+      }
+    })
+    .sort((a, b) => {
+      const aTime =
+        a.createdAt?.seconds ||
+        a.createdAt?._seconds ||
+        new Date(a.createdAt).getTime() / 1000;
+      const bTime =
+        b.createdAt?.seconds ||
+        b.createdAt?._seconds ||
+        new Date(b.createdAt).getTime() / 1000;
+      return bTime - aTime;
+    });
 
   if (loading) {
     return (
@@ -96,38 +129,36 @@ const Notifications = () => {
       </div>
 
       {filteredNotifications.length > 0 ? (
-        filteredNotifications
-          .sort((a, b) => b.createdAt._seconds - a.createdAt._seconds)
-          .map((notification) => {
-            const icon = typeIcons[notification.type] || typeIcons.default;
-            return (
-              <div
-                key={notification.id}
-                onClick={() => handleNotificationClick(notification)}
-                className={`cursor-pointer p-4 mb-4 rounded-md border transition duration-200 shadow-sm hover:shadow-md ${
-                  notification.read
-                    ? "bg-gray-100 border-gray-300"
-                    : "bg-white border-blue-400"
-                }`}
-              >
-                <h4 className="text-lg font-semibold capitalize text-gray-800 mb-1 flex items-center gap-2">
-                  <span>{icon}</span>
-                  {notification.type.replace(/_/g, " ")}
-                </h4>
-                <p className="text-gray-600">{notification.message}</p>
-                <small className="text-gray-500 block mt-2">
-                  📅{" "}
-                  {new Date(
-                    notification.createdAt._seconds * 1000
-                  ).toLocaleDateString()}{" "}
-                  🕒{" "}
-                  {new Date(
-                    notification.createdAt._seconds * 1000
-                  ).toLocaleTimeString()}{" "}
-                </small>
-              </div>
-            );
-          })
+        filteredNotifications.map((notification) => {
+          const icon = typeIcons[notification.type] || typeIcons.default;
+          const timestamp =
+            notification.createdAt?.seconds ||
+            notification.createdAt?._seconds ||
+            new Date(notification.createdAt).getTime() / 1000;
+          const date = new Date(timestamp * 1000);
+
+          return (
+            <div
+              key={notification.id}
+              onClick={() => handleNotificationClick(notification)}
+              className={`cursor-pointer p-4 mb-4 rounded-md border transition duration-200 shadow-sm hover:shadow-md ${
+                notification.read
+                  ? "bg-gray-100 border-gray-300"
+                  : "bg-white border-blue-400"
+              }`}
+            >
+              <h4 className="text-lg font-semibold capitalize text-gray-800 mb-1 flex items-center gap-2">
+                <span>{icon}</span>
+                {notification.type.replace(/_/g, " ")}
+              </h4>
+              <p className="text-gray-600">{notification.message}</p>
+              <small className="text-gray-500 block mt-2">
+                📅 {date.toLocaleDateString("en-GB")} 🕒{" "}
+                {date.toLocaleTimeString()}
+              </small>
+            </div>
+          );
+        })
       ) : (
         <p className="text-center text-gray-500 text-lg">
           🔕 No notifications available.
