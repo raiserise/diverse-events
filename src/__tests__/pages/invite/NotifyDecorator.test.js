@@ -1,7 +1,7 @@
 // npm test -- src/__tests__/pages/invite/NotifyDecorator.test.js
 
 import { NotifyDecorator } from "../../../invite/NotifyDecorator";
-import { addDoc, collection, getFirestore } from "firebase/firestore";
+import { collection, getFirestore } from "firebase/firestore";
 
 jest.mock("firebase/firestore", () => ({
   addDoc: jest.fn(),
@@ -13,7 +13,6 @@ jest.mock("firebase/firestore", () => ({
 describe("NotifyDecorator", () => {
   const mockDb = {};
   const mockCollectionRef = {};
-  const mockUser = { id: "user123" };
   const mockEventId = "event456";
   const mockEventTitle = "Cool Event";
 
