@@ -1005,7 +1005,7 @@ describe("RSVP and State Pattern", () => {
         userId: "organizer123",
         type: "rsvp_received",
         message:
-          "User user1 has RSVP'd as a guest/participant for \"Mock Event\".",
+          "A user has requested to join your event \"Mock Event\" as a guest/participant",
         relatedEventId: "event1",
       });
     });
@@ -1046,7 +1046,7 @@ describe("RSVP and State Pattern", () => {
         userId: "organizer123",
         type: "rsvp_received",
         message:
-          "User user1 has RSVP'd as a guest/participant for \"Mock Event\".",
+          "A user has requested to join your event \"Mock Event\" as a guest/participant",
         relatedEventId: "event1",
       });
     });
