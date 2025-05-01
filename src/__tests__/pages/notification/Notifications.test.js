@@ -1,73 +1,134 @@
-//npm test -- src/__tests__/pages/notification/Notifications.test.js
-import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { act } from 'react';
-import { MemoryRouter } from 'react-router-dom';
-import Notifications from '../../../pages/notification/Notifications';
-import * as apiService from '../../../api/apiService';
-import { useNavigate } from 'react-router-dom';
+import React from "react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import Notifications from "../../../pages/notification/Notifications";
+import { BrowserRouter } from "react-router-dom";
+import { useAuth } from "../../../context/AuthProvider";
+import notificationService from "../../../services/NotificationService";
 
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: jest.fn(),
+// Mock user context
+jest.mock("../../../context/AuthProvider", () => ({
+  useAuth: jest.fn(),
 }));
 
-jest.mock('../../../api/apiService', () => ({
-  getAllData: jest.fn(),
-  patchData: jest.fn(),
+// Mock notification service
+jest.mock("../../../services/NotificationService", () => ({
+  subscribe: jest.fn(),
+  unsubscribeObserver: jest.fn(),
+  startListening: jest.fn(),
+  stopListening: jest.fn(),
 }));
 
-describe('Notifications', () => {
-  const mockNavigate = jest.fn();
+describe("Notifications", () => {
+  const mockUser = { uid: "user123" };
+
+  const mockNotifications = [
+    {
+      id: "1",
+      type: "event_invite",
+      message: "You are invited!",
+      read: false,
+      createdAt: { _seconds: Math.floor(Date.now() / 1000) },
+      relatedEventId: "abc",
+    },
+    {
+      id: "2",
+      type: "rsvp_approved",
+      message: "Your RSVP has been approved!",
+      read: true,
+      createdAt: { _seconds: Math.floor(Date.now() / 1000) - 5000 },
+      relatedEventId: "def",
+    },
+  ];
 
   beforeEach(() => {
     jest.clearAllMocks();
-    useNavigate.mockReturnValue(mockNavigate);
+    useAuth.mockReturnValue({ user: mockUser });
+
+    // Simulate onSnapshot pushing notifications after component mounts
+    notificationService.subscribe.mockImplementation((callback) => {
+      setTimeout(() => {
+        callback(mockNotifications);
+      }, 0); // mimic async behavior
+    });
   });
 
-  it('filters unread notifications', async () => {
-    apiService.getAllData.mockResolvedValueOnce([
-      {
-        id: 'notif-1',
-        type: 'event_invite',
-        message: 'Invite!',
-        read: true,
-        createdAt: { _seconds: Math.floor(Date.now() / 1000) },
-      },
-      {
-        id: 'notif-2',
-        type: 'event_invite',
-        message: 'New Invite!',
-        read: false,
-        createdAt: { _seconds: Math.floor(Date.now() / 1000) },
-      },
-    ]);
+  const renderComponent = () =>
+    render(
+      <BrowserRouter>
+        <Notifications />
+      </BrowserRouter>
+    );
 
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <Notifications />
-        </MemoryRouter>
-      );
+  it("renders loading initially, then displays notifications", async () => {
+    renderComponent();
+
+    // Initially shows loading
+    expect(screen.getByText(/loading notifications/i)).toBeInTheDocument();
+
+    // Wait for notifications to load
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/loading notifications/i)
+      ).not.toBeInTheDocument()
+    );
+
+    // Shows notifications
+    expect(screen.getByText(/you are invited!/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/your rsvp has been approved!/i)
+    ).toBeInTheDocument();
+  });
+
+  it("filters unread notifications when clicking UNREAD tab", async () => {
+    renderComponent();
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/loading notifications/i)
+      ).not.toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByText(/📬 unread/i));
+
+    // Should only show unread
+    expect(screen.getByText(/you are invited!/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/your rsvp has been approved!/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it("filters only invites when clicking INVITES tab", async () => {
+    renderComponent();
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/loading notifications/i)
+      ).not.toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByText(/📨 invites/i));
+
+    expect(screen.getByText(/you are invited!/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/your rsvp has been approved!/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows empty state when there are no notifications in selected tab", async () => {
+    notificationService.subscribe.mockImplementation((callback) => {
+      setTimeout(() => {
+        callback([]); // empty list
+      }, 0);
     });
 
-    // Should show both initially
-    await waitFor(() => {
-      const initial = screen.getAllByText(/invite/i).filter(
-        el => el.tagName.toLowerCase() === 'h4' || el.tagName.toLowerCase() === 'p'
-      );
-      expect(initial).toHaveLength(4); // h4 + p for each
-    });
+    renderComponent();
 
-    // Click UNREAD tab
-    fireEvent.click(screen.getByText(/📬 UNREAD/i));
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/loading notifications/i)
+      ).not.toBeInTheDocument()
+    );
 
-    // Should show only 1 unread notification
-    await waitFor(() => {
-      const filtered = screen.getAllByText(/invite/i).filter(
-        el => el.tagName.toLowerCase() === 'h4' || el.tagName.toLowerCase() === 'p'
-      );
-      expect(filtered).toHaveLength(2); // h4 + p for unread only
-    });
+    expect(screen.getByText(/no notifications available/i)).toBeInTheDocument();
   });
 });
