@@ -188,7 +188,6 @@ describe("RSVP and State Pattern", () => {
 
       // Final db.collection() implementation
       db.collection.mockImplementation((collection) => {
-        console.log(`Accessing collection: ${collection}`);
         if (collection === "events") {
           return {doc: eventDocMock};
         }
@@ -250,7 +249,6 @@ describe("RSVP and State Pattern", () => {
 
       // Final db.collection() implementation
       db.collection.mockImplementation((collection) => {
-        console.log(`Accessing collection: ${collection}`);
         if (collection === "events") {
           return {doc: eventDocMock};
         }
@@ -313,7 +311,6 @@ describe("RSVP and State Pattern", () => {
 
       // Final db.collection() implementation
       db.collection.mockImplementation((collection) => {
-        console.log(`Accessing collection: ${collection}`);
         if (collection === "events") {
           return {doc: eventDocMock};
         }
@@ -375,7 +372,6 @@ describe("RSVP and State Pattern", () => {
 
       // Final db.collection() implementation
       db.collection.mockImplementation((collection) => {
-        console.log(`Accessing collection: ${collection}`);
         if (collection === "events") {
           return {doc: eventDocMock};
         }
