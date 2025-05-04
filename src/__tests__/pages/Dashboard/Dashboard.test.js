@@ -1,3 +1,4 @@
+// npm test -- src/__tests__/pages/Dashboard/Dashboard.test.js
 /* eslint-disable react/display-name */
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -75,7 +76,9 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Total Events").length).toBeGreaterThan(0);
       expect(screen.getAllByText("Upcoming Events").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("Your RSVPs").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Your Approved RSVPs").length).toBeGreaterThan(
+        0
+      );
       expect(screen.getAllByText("Test Event 1").length).toBeGreaterThan(0);
       expect(screen.getAllByText("Test Event 2").length).toBeGreaterThan(0);
     });

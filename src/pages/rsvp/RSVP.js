@@ -18,10 +18,8 @@ const RSVP = () => {
     try {
       //Fetch all events managed by the user
       const userEventsData = await getAllData("/events/me", true);
-      console.log("userEventsData:", userEventsData);
 
       const userEventIds = userEventsData.map((event) => event.id);
-      console.log("userEventIds:", userEventIds);
 
       //Fetch pending RSVPs for those events
       const fetchManagedRSVPs = async (eventId) => {
@@ -38,12 +36,10 @@ const RSVP = () => {
         userEventIds.map(fetchManagedRSVPs)
       );
       const allManagedRSVPs = managedResults.flat();
-      console.log("RSVP for managed events:", allManagedRSVPs);
 
       //Fetch RSVPs made by the user
       const myRSVPData = await getAllData("/rsvp/user", true);
       const rsvps = myRSVPData?.rsvps || [];
-      console.log("RSVP by current user:", rsvps);
 
       //Fetch event details in batch for user's RSVPs
       const eventIdsFromRSVPs = [...new Set(rsvps.map((rsvp) => rsvp.eventId))];
@@ -56,7 +52,6 @@ const RSVP = () => {
           true
         );
         events = eventBatchResponse.events || [];
-        console.log("Events from my RSVPs:", events);
       }
 
       //Fetch event details for managed RSVPs in batch
@@ -72,7 +67,6 @@ const RSVP = () => {
           true
         );
         userEvents = userEventBatchResponse.events || [];
-        console.log("Events from managed RSVPs:", userEvents);
       }
 
       //Batch fetch users involved in managed RSVPs
@@ -87,7 +81,6 @@ const RSVP = () => {
           { ids: uniqueUserIds },
           true
         );
-        console.log("Batch-fetched users:", userBatchResponse.users);
       }
 
       const userMap = new Map();
@@ -109,7 +102,6 @@ const RSVP = () => {
           email: user.email,
         };
       });
-      console.log("Enriched pending RSVPs:", enrichedPendingRSVPs);
 
       //Enrich current user's RSVPs with event + name
       const enrichedRSVPs = rsvps.map((rsvp) => {
@@ -230,7 +222,6 @@ const MyRSVPList = ({ rsvps, onCancel }) => {
     closeModal();
   };
 
-  console.log("My Rsvps", rsvps);
   if (rsvps.length === 0) {
     return (
       <EmptyState
@@ -420,7 +411,11 @@ const ManageRSVPList = ({ rsvps, onApprove, onReject }) => {
 };
 
 const RSVPLoader = () => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  <div
+    role="status"
+    aria-label="Loading RSVP data"
+    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+  >
     {[...Array(3)].map((_, i) => (
       <div key={i} className="bg-white p-6 rounded-lg shadow-md animate-pulse">
         <div className="h-48 bg-gray-300 rounded-lg mb-4"></div>
