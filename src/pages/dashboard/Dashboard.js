@@ -24,12 +24,18 @@ const DashboardPage = () => {
   // }, []);
 
   useEffect(() => {
-    const fetchEvents = async () => {
+    const fetchEventsAndStats = async () => {
       try {
-        const data = await getAllData("/events", true);
+        const [eventsData, userRsvpsResponse] = await Promise.all([
+          getAllData("/events", true),
+          getAllData("/rsvp/user", true),
+        ]);
+
+        const userRsvps = userRsvpsResponse.rsvps || [];
+        const now = new Date();
 
         // Sort events by date (most recent first)
-        const sortedEvents = [...data].sort((a, b) => {
+        const sortedEvents = [...eventsData].sort((a, b) => {
           const dateA = a.startDate?._seconds
             ? new Date(a.startDate._seconds * 1000)
             : new Date(a.startDate);
@@ -41,8 +47,7 @@ const DashboardPage = () => {
 
         setEvents(sortedEvents);
 
-        // Update stats
-        const now = new Date();
+        // Filter upcoming events
         const upcoming = sortedEvents.filter((event) => {
           const eventDate = event.startDate?._seconds
             ? new Date(event.startDate._seconds * 1000)
@@ -50,10 +55,24 @@ const DashboardPage = () => {
           return eventDate > now;
         });
 
+        // Count approved RSVPs for future events
+        const approvedUpcoming = userRsvps.filter((rsvp) => {
+          if (rsvp.status !== "approved") return false;
+
+          const matchedEvent = eventsData.find((e) => e.id === rsvp.eventId);
+          if (!matchedEvent) return false;
+
+          const eventDate = matchedEvent.startDate?._seconds
+            ? new Date(matchedEvent.startDate._seconds * 1000)
+            : new Date(matchedEvent.startDate);
+
+          return eventDate > now;
+        });
+
         setStats({
-          totalEvents: data.length,
+          totalEvents: eventsData.length,
           upcomingEvents: upcoming.length,
-          yourRsvps: Math.floor(Math.random() * 5), // Placeholder - replace with actual RSVP count
+          yourRsvps: approvedUpcoming.length,
         });
       } catch (error) {
         setError(error.message);
@@ -62,7 +81,7 @@ const DashboardPage = () => {
       }
     };
 
-    fetchEvents();
+    fetchEventsAndStats();
   }, []);
 
   // // Format date to display
@@ -154,7 +173,7 @@ const DashboardPage = () => {
           <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-purple-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 font-medium">Your RSVPs</p>
+                <p className="text-gray-500 font-medium">Your Approved RSVPs</p>
                 <p className="text-3xl font-bold mt-1">{stats.yourRsvps}</p>
               </div>
               <div className="bg-purple-100 p-3 rounded-lg">
