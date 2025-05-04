@@ -305,9 +305,6 @@ const DashboardPage = () => {
                 <h2 className="text-xl font-bold text-gray-800">
                   Notifications
                 </h2>
-                <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
-                  New
-                </span>
               </div>
               <div className="overflow-y-auto" style={{ maxHeight: "600px" }}>
                 <Notifications />
