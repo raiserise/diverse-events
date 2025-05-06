@@ -22,7 +22,7 @@ const Landing = () => {
           <div className="flex flex-col md:flex-row items-center">
             <div className="md:w-1/2 mb-10 md:mb-0">
               <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-4">
-                Welcome to DiverseEvents ! ! !
+                Welcome to DiverseEvents
               </h1>
               <p className="text-xl md:text-2xl opacity-90 mb-8">
                 Plan, organize, and attend diverse events with ease
