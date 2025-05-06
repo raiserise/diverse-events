@@ -22,7 +22,7 @@ const Landing = () => {
           <div className="flex flex-col md:flex-row items-center">
             <div className="md:w-1/2 mb-10 md:mb-0">
               <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-4">
-                Welcome to DiverseEvents
+                Welcome to DiverseEvents ! ! !
               </h1>
               <p className="text-xl md:text-2xl opacity-90 mb-8">
                 Plan, organize, and attend diverse events with ease
@@ -65,7 +65,7 @@ const Landing = () => {
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">
             Discover What We Offer
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
               <div className="text-4xl mb-4 text-blue-500">✨</div>
@@ -73,27 +73,30 @@ const Landing = () => {
                 Create & Customize
               </h3>
               <p className="text-gray-600">
-                Build personalized events with our intuitive tools, from small gatherings to large conferences.
+                Build personalized events with our intuitive tools, from small
+                gatherings to large conferences.
               </p>
             </div>
-            
+
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
               <div className="text-4xl mb-4 text-green-500">🔔</div>
               <h3 className="text-xl font-semibold mb-3 text-gray-800">
                 Real-time Notifications
               </h3>
               <p className="text-gray-600">
-                Stay updated with instant notifications for RSVPs, invitations, and event changes.
+                Stay updated with instant notifications for RSVPs, invitations,
+                and event changes.
               </p>
             </div>
-            
+
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
               <div className="text-4xl mb-4 text-purple-500">👥</div>
               <h3 className="text-xl font-semibold mb-3 text-gray-800">
                 Simplified RSVP
               </h3>
               <p className="text-gray-600">
-                Manage attendance with our streamlined RSVP system, perfect for hosts and attendees.
+                Manage attendance with our streamlined RSVP system, perfect for
+                hosts and attendees.
               </p>
             </div>
           </div>
@@ -104,7 +107,7 @@ const Landing = () => {
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">
             How It Works
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="text-center">
               <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-2xl font-bold mb-4">
@@ -115,7 +118,7 @@ const Landing = () => {
                 Create your free account in seconds
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-2xl font-bold mb-4">
                 2
@@ -125,7 +128,7 @@ const Landing = () => {
                 Set up your event with all the details
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-2xl font-bold mb-4">
                 3
@@ -135,7 +138,7 @@ const Landing = () => {
                 Share with friends or make it public
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-2xl font-bold mb-4">
                 4
@@ -154,7 +157,8 @@ const Landing = () => {
             Ready to create your first event?
           </h2>
           <p className="text-lg md:text-xl opacity-90 max-w-2xl mx-auto mb-8">
-            Join thousands of event organizers who are creating memorable experiences with DiverseEvents.
+            Join thousands of event organizers who are creating memorable
+            experiences with DiverseEvents.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link
@@ -175,38 +179,41 @@ const Landing = () => {
 
       {/* Testimonials Section (Optional) */}
       <section className="bg-gray-100 py-16">
-  <div className="container mx-auto px-6">
-    <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">
-      What Our Users Say
-    </h2>
-    
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="text-yellow-400 text-2xl mb-4">★★★★★</div>
-        <p className="text-gray-600 mb-4">
-          &ldquo;DiverseEvents made planning our company retreat so much easier. The RSVP system saved us hours of work!&rdquo;
-        </p>
-        <p className="font-medium">- Aniq, Marketing Director</p>
-      </div>
-      
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="text-yellow-400 text-2xl mb-4">★★★★★</div>
-        <p className="text-gray-600 mb-4">
-          &ldquo;I love how easy it is to create and manage events. The notification system keeps everyone in the loop.&rdquo;
-        </p>
-        <p className="font-medium">- Chris, Event Organizer</p>
-      </div>
-      
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="text-yellow-400 text-2xl mb-4">★★★★★</div>
-        <p className="text-gray-600 mb-4">
-          &ldquo;From community meetups to workshops, this platform handles everything I need for my events.&rdquo;
-        </p>
-        <p className="font-medium">- Ryan, Community Leader</p>
-      </div>
-    </div>
-  </div>
-</section>
+        <div className="container mx-auto px-6">
+          <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">
+            What Our Users Say
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <div className="text-yellow-400 text-2xl mb-4">★★★★★</div>
+              <p className="text-gray-600 mb-4">
+                &ldquo;DiverseEvents made planning our company retreat so much
+                easier. The RSVP system saved us hours of work!&rdquo;
+              </p>
+              <p className="font-medium">- Aniq, Marketing Director</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <div className="text-yellow-400 text-2xl mb-4">★★★★★</div>
+              <p className="text-gray-600 mb-4">
+                &ldquo;I love how easy it is to create and manage events. The
+                notification system keeps everyone in the loop.&rdquo;
+              </p>
+              <p className="font-medium">- Chris, Event Organizer</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <div className="text-yellow-400 text-2xl mb-4">★★★★★</div>
+              <p className="text-gray-600 mb-4">
+                &ldquo;From community meetups to workshops, this platform
+                handles everything I need for my events.&rdquo;
+              </p>
+              <p className="font-medium">- Ryan, Community Leader</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Footer */}
       <footer className="bg-gray-800 text-white py-8">
@@ -216,10 +223,11 @@ const Landing = () => {
               <h3 className="text-2xl font-bold">DiverseEvents</h3>
               <p className="text-gray-400 mt-2">Making event planning simple</p>
             </div>
-            
+
             <div>
               <p className="text-sm text-gray-400">
-                &copy; {new Date().getFullYear()} DiverseEvents. All Rights Reserved.
+                &copy; {new Date().getFullYear()} DiverseEvents. All Rights
+                Reserved.
               </p>
             </div>
           </div>
