@@ -16,5 +16,14 @@ module.exports = {
     "!src/pages/login/**",
     "!src/pages/services/**",
   ],
+  coveragePathIgnorePatterns: [
+    "/node_modules/",
+    "/src/utils/",
+    "/src/api/apiService",
+    "/src/layout/",
+    "/src/pages/landing/",
+    "/src/pages/login/",
+    "/src/pages/services/",
+  ],
   moduleDirectories: ["node_modules", "src"], // Ensure Jest can resolve your modules
 };
